@@ -3,6 +3,9 @@ logger = logging.getLogger('base')
 
 
 def create_model(opt):
+    '''
+    create model
+    '''
     model = opt['model']
     if model in ['SelfC',"SelfC_VRN","SelfC_GMM"]:
         from .SelfC_model import SelfCModel as M

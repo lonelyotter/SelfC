@@ -1,6 +1,6 @@
 # python test_rescaling.py -opt ./options/test/rescaling/test_SelfC_large_vid4.yml
 
-name: test_SelfC_large_GMM
+name: test_SelfC_small_GMM
 suffix: ~  # add suffix to saved images
 model: SelfC_GMM
 distortion: sr_bd
@@ -49,7 +49,7 @@ network_G:
       subnet_type: D2DTNet
   in_nc: 3
   out_nc: 3
-  block_num: [4, 4]
+  block_num: [1, 1]
   scale: 4
   init: xavier
   global_module: nonlocal
@@ -60,5 +60,5 @@ network_G:
 
 #### path
 path:
-  pretrain_model_G: ../pretrained_models/selfc_large_pretrain.pth
+  pretrain_model_G: /home/songhc/SelfC/experiments/SelfC_small_GMM_STP6/models/latest_G.pth
   strict_load: True

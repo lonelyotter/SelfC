@@ -13,7 +13,7 @@ import options.options as option
 from utils import util
 from data import create_dataloader, create_dataset
 from models import create_model
-from data.util import bgr2ycbcr,rgb_to_ycbcr
+from data.util import bgr2ycbcr, rgb_to_ycbcr
 
 
 def init_dist(backend='nccl', **kwargs):
@@ -27,7 +27,7 @@ def init_dist(backend='nccl', **kwargs):
     dist.init_process_group(backend=backend, **kwargs)
 
 
-def cal_metric(val_loader,val_ds_name,model,opt,current_step):
+def cal_metric(val_loader, val_ds_name, model, opt, current_step):
     avg_psnr = []
     avg_psnr_y = []
     avg_lr_psnr = []
@@ -37,48 +37,55 @@ def cal_metric(val_loader,val_ds_name,model,opt,current_step):
     avg_ssim_y = []
     avg_lr_ssim = []
     avg_lr_ssim_y = []
+
     idx = 0
+
     for val_data in val_loader:
         idx += 1
-        img_name = os.path.splitext(os.path.basename(val_data['LQ_path'][0]))[0]
-        img_dir = os.path.join(opt['path']['val_images'],val_ds_name+"_"+img_name)
+        img_name = os.path.splitext(os.path.basename(
+            val_data['LQ_path'][0]))[0]
+        img_dir = os.path.join(opt['path']['val_images'],
+                               val_ds_name + "_" + img_name)
         util.mkdir(img_dir)
         model.feed_data(val_data)
-        
+
         model.test()
 
         visuals = model.get_current_visuals()
         sr_img = (visuals['SR'])
         gt_img = (visuals['GT'])
-        lr_img = (visuals['LR'])  
-        lrgt_img = (visuals['LR_ref']) 
+        lr_img = (visuals['LR'])
+        lrgt_img = (visuals['LR_ref'])
 
-        # Save SR images for reference
-        save_img_path = os.path.join(img_dir,
-                                        '{:s}_{:d}_clip{:d}.png'.format(img_name, current_step,idx))
-        util.save_img(util.tensor2img(visuals['SR']), save_img_path)
+        # # Save SR images for reference
+        # save_img_path = os.path.join(img_dir,
+        #                                 '{:s}_{:d}_clip{:d}.png'.format(img_name, current_step,idx))
+        # util.save_img(util.tensor2img(visuals['SR']), save_img_path)
 
-        # Save LR images
-        save_img_path_L = os.path.join(img_dir, '{:s}_forwLR_{:d}_clip{:d}.png'.format(img_name, current_step,idx))
-        util.save_img(util.tensor2img(visuals['LR']), save_img_path_L)
+        # # Save LR images
+        # save_img_path_L = os.path.join(img_dir, '{:s}_forwLR_{:d}_clip{:d}.png'.format(img_name, current_step,idx))
+        # util.save_img(util.tensor2img(visuals['LR']), save_img_path_L)
 
         # calculate PSNR
         avg_psnr += util.calculate_psnr(sr_img, gt_img)
         avg_ssim += util.calculate_ssim(sr_img, gt_img)
+
         ## cal Y channel
-        sr_img_y = rgb_to_ycbcr(sr_img) 
-        gt_img_y = rgb_to_ycbcr(gt_img) 
-        avg_psnr_y+= util.calculate_psnr(sr_img_y, gt_img_y)
-        avg_ssim_y+= util.calculate_ssim(sr_img_y, gt_img_y)
+        sr_img_y = rgb_to_ycbcr(sr_img)
+        gt_img_y = rgb_to_ycbcr(gt_img)
+        avg_psnr_y += util.calculate_psnr(sr_img_y, gt_img_y)
+        avg_ssim_y += util.calculate_ssim(sr_img_y, gt_img_y)
 
         # calculate LR PSNR
         avg_lr_psnr += util.calculate_psnr(lr_img, lrgt_img)
         avg_lr_ssim += util.calculate_ssim(lr_img, lrgt_img)
+
         ## cal LR Y channel
-        a = rgb_to_ycbcr(lr_img) 
-        b = rgb_to_ycbcr(lrgt_img) 
+        a = rgb_to_ycbcr(lr_img)
+        b = rgb_to_ycbcr(lrgt_img)
         avg_lr_psnr_y += util.calculate_psnr(a, b)
         avg_lr_ssim_y += util.calculate_ssim(a, b)
+
     avg_psnr = sum(avg_psnr) / len(avg_psnr)
     avg_psnr_y = sum(avg_psnr_y) / len(avg_psnr_y)
     avg_lr_psnr = sum(avg_lr_psnr) / len(avg_lr_psnr)
@@ -88,15 +95,20 @@ def cal_metric(val_loader,val_ds_name,model,opt,current_step):
     avg_ssim_y = sum(avg_ssim_y) / len(avg_ssim_y)
     avg_lr_ssim = sum(avg_lr_ssim) / len(avg_lr_ssim)
     avg_lr_ssim_y = sum(avg_lr_ssim_y) / len(avg_lr_ssim_y)
-    return avg_psnr,avg_psnr_y,avg_lr_psnr,avg_lr_psnr_y, avg_ssim,avg_ssim_y,avg_lr_ssim,avg_lr_ssim_y
+
+    return avg_psnr, avg_psnr_y, avg_lr_psnr, avg_lr_psnr_y, avg_ssim, avg_ssim_y, avg_lr_ssim, avg_lr_ssim_y
+
 
 def main():
+    # max rgb psnr of validation set, used to save best model
     validation_max_metric = -1
 
-    #### options
+    #### parse options
     parser = argparse.ArgumentParser()
     parser.add_argument('-opt', type=str, help='Path to option YMAL file.')
-    parser.add_argument('--launcher', choices=['none', 'pytorch'], default='none',
+    parser.add_argument('--launcher',
+                        choices=['none', 'pytorch'],
+                        default='none',
                         help='job launcher')
     parser.add_argument('--local_rank', type=int, default=0)
     args = parser.parse_args()
@@ -117,26 +129,39 @@ def main():
     if opt['path'].get('resume_state', None):
         # distributed resuming: all load into default GPU
         device_id = torch.cuda.current_device()
-        resume_state = torch.load(opt['path']['resume_state'],
-                                  map_location=lambda storage, loc: storage.cuda(device_id))
+        resume_state = torch.load(
+            opt['path']['resume_state'],
+            map_location=lambda storage, loc: storage.cuda(device_id))
         option.check_resume(opt, resume_state['iter'])  # check resume options
     else:
         resume_state = None
+
     #### mkdir and loggers
     if rank <= 0:  # normal training (rank -1) OR distributed training (rank 0)
         if resume_state is None:
             util.mkdir_and_rename(
-                opt['path']['experiments_root'])  # rename experiment folder if exists
-            dirs = (path for key, path in opt['path'].items() if not key == 'experiments_root'
-                         and 'pretrain_model' not in key and 'resume' not in key)
+                opt['path']
+                ['experiments_root'])  # rename experiment folder if exists
+            dirs = (path for key, path in opt['path'].items()
+                    if not key == 'experiments_root'
+                    and 'pretrain_model' not in key and 'resume' not in key)
             util.mkdirs(dirs)
         # log_dir = opt['path']['log']
         # config loggers. Before it, the log will not work
-        util.setup_logger('base', opt['path']['log'], 'train_' + opt['name'], level=logging.INFO,
-                          screen=True, tofile=True)
-        util.setup_logger('val', opt['path']['log'], 'val_' + opt['name'], level=logging.INFO,
-                          screen=True, tofile=True)
+        util.setup_logger('base',
+                          opt['path']['log'],
+                          'train_' + opt['name'],
+                          level=logging.INFO,
+                          screen=True,
+                          tofile=True)
+        util.setup_logger('val',
+                          opt['path']['log'],
+                          'val_' + opt['name'],
+                          level=logging.INFO,
+                          screen=True,
+                          tofile=True)
         logger = logging.getLogger('base')
+        # print options
         logger.info(option.dict2str(opt))
         # tensorboard logger
         if opt['use_tb_logger'] and 'debug' not in opt['name']:
@@ -145,11 +170,16 @@ def main():
                 from torch.utils.tensorboard import SummaryWriter
             else:
                 logger.info(
-                    'You are using PyTorch {}. Tensorboard will use [tensorboardX]'.format(version))
+                    'You are using PyTorch {}. Tensorboard will use [tensorboardX]'
+                    .format(version))
                 from tensorboardX import SummaryWriter
             tb_logger = SummaryWriter(log_dir='../tb_logger/' + opt['name'])
     else:
-        util.setup_logger('base', opt['path']['log'], 'train', level=logging.INFO, screen=True)
+        util.setup_logger('base',
+                          opt['path']['log'],
+                          'train',
+                          level=logging.INFO,
+                          screen=True)
         logger = logging.getLogger('base')
 
     # convert to NoneDict, which returns None for missing keys
@@ -167,59 +197,76 @@ def main():
 
     torch.backends.cudnn.benchmark = True
     # torch.backends.cudnn.deterministic = True
+
     #### create train and val dataloader
     dataset_ratio = 200  # enlarge the size of each epoch
     for phase, dataset_opt in opt['datasets'].items():
-        print(phase, dataset_opt,opt['dist'])
-        if phase == 'train':
+        print(phase, dataset_opt, opt['dist'])
 
+        if phase == 'train':
             train_set = create_dataset(dataset_opt)
-            train_size = int(math.ceil(len(train_set) / dataset_opt['batch_size']))
+            # iterations per epoch
+            train_size = int(
+                math.ceil(len(train_set) / dataset_opt['batch_size']))
+            # total iterations
             total_iters = int(opt['train']['niter'])
+            # total epochs to run
             total_epochs = int(math.ceil(total_iters / train_size))
             if opt['dist']:
-                train_sampler = DistIterSampler(train_set, world_size, rank, dataset_ratio)
-                total_epochs = int(math.ceil(total_iters / (train_size * dataset_ratio)))
+                train_sampler = DistIterSampler(train_set, world_size, rank,
+                                                dataset_ratio)
+                total_epochs = int(
+                    math.ceil(total_iters / (train_size * dataset_ratio)))
             else:
                 train_sampler = None
-            
-            train_loader = create_dataloader(train_set, dataset_opt, opt, train_sampler)
+
+            train_loader = create_dataloader(train_set, dataset_opt, opt,
+                                             train_sampler)
 
             if rank <= 0:
-                logger.info('Number of train images: {:,d}, iters: {:,d}'.format(
-                    len(train_set), train_size))
+                logger.info(
+                    'Number of train images: {:,d}, iters: {:,d}'.format(
+                        len(train_set), train_size))
                 logger.info('Total epochs needed: {:d} for iters {:,d}'.format(
                     total_epochs, total_iters))
+
         elif phase == 'val1':
             val_set1 = create_dataset(dataset_opt)
             val_loader1 = create_dataloader(val_set1, dataset_opt, opt, None)
             if rank <= 0:
                 logger.info('Number of val images in [{:s}]: {:d}'.format(
                     dataset_opt['name'], len(val_set1)))
+
         elif phase == 'val2':
             val_set2 = create_dataset(dataset_opt)
             val_loader2 = create_dataloader(val_set2, dataset_opt, opt, None)
             if rank <= 0:
                 logger.info('Number of val images in [{:s}]: {:d}'.format(
                     dataset_opt['name'], len(val_set2)))
+
         elif phase == 'val3':
             val_set3 = create_dataset(dataset_opt)
             val_loader3 = create_dataloader(val_set3, dataset_opt, opt, None)
             if rank <= 0:
                 logger.info('Number of val images in [{:s}]: {:d}'.format(
                     dataset_opt['name'], len(val_set3)))
+
         elif phase == 'val4':
             val_set4 = create_dataset(dataset_opt)
             val_loader4 = create_dataloader(val_set4, dataset_opt, opt, None)
             if rank <= 0:
                 logger.info('Number of val images in [{:s}]: {:d}'.format(
                     dataset_opt['name'], len(val_set4)))
+
         else:
-            raise NotImplementedError('Phase [{:s}] is not recognized.'.format(phase))
+            raise NotImplementedError(
+                'Phase [{:s}] is not recognized.'.format(phase))
+
     assert train_loader is not None
+
     #### create model
     model = create_model(opt)
-    
+
     #### resume training
     if resume_state:
         logger.info('Resuming training from epoch: {}, iter: {}.'.format(
@@ -233,20 +280,25 @@ def main():
         start_epoch = 0
 
     #### training
-    logger.info('Start training from epoch: {:d}, iter: {:d}'.format(start_epoch, current_step))
+    logger.info('Start training from epoch: {:d}, iter: {:d}'.format(
+        start_epoch, current_step))
+    
     for epoch in range(start_epoch, total_epochs + 1):
         if opt['dist']:
             train_sampler.set_epoch(epoch)
+
         for _, train_data in enumerate(train_loader):
             current_step += 1
             if current_step > total_iters:
                 break
+
             #### training
             model.feed_data(train_data)
             model.optimize_parameters(current_step)
 
             #### update learning rate
-            model.update_learning_rate(current_step, warmup_iter=opt['train']['warmup_iter'])
+            model.update_learning_rate(current_step,
+                                       warmup_iter=opt['train']['warmup_iter'])
 
             #### log
             if current_step % opt['logger']['print_freq'] == 0:
@@ -261,15 +313,17 @@ def main():
                             tb_logger.add_scalar(k, v, current_step)
                 if rank <= 0:
                     logger.info(message)
+
             #### save models and training states
             if current_step % opt['logger']['save_checkpoint_freq'] == 0:
                 if rank <= 0:
                     logger.info('Saving models and training states.')
                     model.save(current_step)
                     model.save_training_state(epoch, current_step)
+
             # validation
             if current_step % opt['train']['val_freq'] == 0 and rank <= 0:
-                ## cal 
+                ## cal
                 avg_psnr1,avg_psnr_y1,avg_lr_psnr1,avg_lr_psnr_y1,\
                 avg_ssim1,avg_ssim_y1,avg_lr_ssim1,avg_lr_ssim_y1,\
                 = \
@@ -289,39 +343,55 @@ def main():
                 avg_ssim4,avg_ssim_y4,avg_lr_ssim4,avg_lr_ssim_y4,\
                      = \
                 cal_metric(val_loader4,"val4",model,opt,current_step)
-                avg_psnr = (avg_psnr1+avg_psnr2+avg_psnr3+avg_psnr4)/4
-                avg_psnr_y = (avg_psnr_y1+avg_psnr_y2+avg_psnr_y3+avg_psnr_y4)/4
-                avg_lr_psnr = (avg_lr_psnr1+avg_lr_psnr2+avg_lr_psnr3+avg_lr_psnr4)/4
-                avg_lr_psnr_y = (avg_lr_psnr_y1+avg_lr_psnr_y2+avg_lr_psnr_y3+avg_lr_psnr_y4)/4
+                avg_psnr = (avg_psnr1 + avg_psnr2 + avg_psnr3 + avg_psnr4) / 4
+                avg_psnr_y = (avg_psnr_y1 + avg_psnr_y2 + avg_psnr_y3 +
+                              avg_psnr_y4) / 4
+                avg_lr_psnr = (avg_lr_psnr1 + avg_lr_psnr2 + avg_lr_psnr3 +
+                               avg_lr_psnr4) / 4
+                avg_lr_psnr_y = (avg_lr_psnr_y1 + avg_lr_psnr_y2 +
+                                 avg_lr_psnr_y3 + avg_lr_psnr_y4) / 4
 
-                avg_ssim = (avg_ssim1+avg_ssim2+avg_ssim3+avg_ssim4)/4
-                avg_ssim_y = (avg_ssim_y1+avg_ssim_y2+avg_ssim_y3+avg_ssim_y4)/4
-                avg_lr_ssim = (avg_lr_ssim1+avg_lr_ssim2+avg_lr_ssim3+avg_lr_ssim4)/4
-                avg_lr_ssim_y = (avg_lr_ssim_y1+avg_lr_ssim_y2+avg_lr_ssim_y3+avg_lr_ssim_y4)/4
-                
-                
-
+                avg_ssim = (avg_ssim1 + avg_ssim2 + avg_ssim3 + avg_ssim4) / 4
+                avg_ssim_y = (avg_ssim_y1 + avg_ssim_y2 + avg_ssim_y3 +
+                              avg_ssim_y4) / 4
+                avg_lr_ssim = (avg_lr_ssim1 + avg_lr_ssim2 + avg_lr_ssim3 +
+                               avg_lr_ssim4) / 4
+                avg_lr_ssim_y = (avg_lr_ssim_y1 + avg_lr_ssim_y2 +
+                                 avg_lr_ssim_y3 + avg_lr_ssim_y4) / 4
 
                 # log
-                logger.info("val1 {:.4e} {:.4e} {:.4e} {:.4e}".format(avg_psnr1,avg_psnr_y1,avg_lr_psnr1,avg_lr_psnr_y1))
-                logger.info("val2 {:.4e} {:.4e} {:.4e} {:.4e}".format(avg_psnr2,avg_psnr_y2,avg_lr_psnr2,avg_lr_psnr_y2))
-                logger.info("val3 {:.4e} {:.4e} {:.4e} {:.4e}".format(avg_psnr3,avg_psnr_y3,avg_lr_psnr3,avg_lr_psnr_y3))
-                logger.info("val4 {:.4e} {:.4e} {:.4e} {:.4e}".format(avg_psnr4,avg_psnr_y4,avg_lr_psnr4,avg_lr_psnr_y4))
+                logger.info("val1 {:.4e} {:.4e} {:.4e} {:.4e}".format(
+                    avg_psnr1, avg_psnr_y1, avg_lr_psnr1, avg_lr_psnr_y1))
+                logger.info("val2 {:.4e} {:.4e} {:.4e} {:.4e}".format(
+                    avg_psnr2, avg_psnr_y2, avg_lr_psnr2, avg_lr_psnr_y2))
+                logger.info("val3 {:.4e} {:.4e} {:.4e} {:.4e}".format(
+                    avg_psnr3, avg_psnr_y3, avg_lr_psnr3, avg_lr_psnr_y3))
+                logger.info("val4 {:.4e} {:.4e} {:.4e} {:.4e}".format(
+                    avg_psnr4, avg_psnr_y4, avg_lr_psnr4, avg_lr_psnr_y4))
                 logger.info('# Validation AVG # PSNR: {:.4e},PSNR_Y {:.4e} LR PSNR: {:.4e},PSNR_Y {:.4e} .'\
                 .format(avg_psnr,avg_psnr_y,avg_lr_psnr,avg_lr_psnr_y))
                 logger_val = logging.getLogger('val')  # validation logger
-                logger_val.info('<epoch:{:3d}, iter:{:8,d}> psnr: {:.4e}.'.format(
-                    epoch, current_step, avg_psnr))
-                logger_val.info("val1 {:.4e} {:.4e} {:.4e} {:.4e}".format(avg_psnr1,avg_psnr_y1,avg_lr_psnr1,avg_lr_psnr_y1))
-                logger_val.info("val2 {:.4e} {:.4e} {:.4e} {:.4e}".format(avg_psnr2,avg_psnr_y2,avg_lr_psnr2,avg_lr_psnr_y2))
-                logger_val.info("val3 {:.4e} {:.4e} {:.4e} {:.4e}".format(avg_psnr3,avg_psnr_y3,avg_lr_psnr3,avg_lr_psnr_y3))
-                logger_val.info("val4 {:.4e} {:.4e} {:.4e} {:.4e}".format(avg_psnr4,avg_psnr_y4,avg_lr_psnr4,avg_lr_psnr_y4))
+                logger_val.info(
+                    '<epoch:{:3d}, iter:{:8,d}> psnr: {:.4e}.'.format(
+                        epoch, current_step, avg_psnr))
+                logger_val.info("val1 {:.4e} {:.4e} {:.4e} {:.4e}".format(
+                    avg_psnr1, avg_psnr_y1, avg_lr_psnr1, avg_lr_psnr_y1))
+                logger_val.info("val2 {:.4e} {:.4e} {:.4e} {:.4e}".format(
+                    avg_psnr2, avg_psnr_y2, avg_lr_psnr2, avg_lr_psnr_y2))
+                logger_val.info("val3 {:.4e} {:.4e} {:.4e} {:.4e}".format(
+                    avg_psnr3, avg_psnr_y3, avg_lr_psnr3, avg_lr_psnr_y3))
+                logger_val.info("val4 {:.4e} {:.4e} {:.4e} {:.4e}".format(
+                    avg_psnr4, avg_psnr_y4, avg_lr_psnr4, avg_lr_psnr_y4))
                 logger_val.info('# Validation AVG # PSNR: {:.4e},PSNR_Y {:.4e} LR PSNR: {:.4e},PSNR_Y {:.4e} .'\
                 .format(avg_psnr,avg_psnr_y,avg_lr_psnr,avg_lr_psnr_y))
-                logger_val.info("val1 SSIM {:.4e} {:.4e} {:.4e} {:.4e}".format(avg_ssim1,avg_ssim_y1,avg_lr_ssim1,avg_lr_ssim_y1))
-                logger_val.info("val2 {:.4e} {:.4e} {:.4e} {:.4e}".format(avg_ssim2,avg_ssim_y2,avg_lr_ssim2,avg_lr_ssim_y2))
-                logger_val.info("val3 {:.4e} {:.4e} {:.4e} {:.4e}".format(avg_ssim3,avg_ssim_y3,avg_lr_ssim3,avg_lr_ssim_y3))
-                logger_val.info("val4 {:.4e} {:.4e} {:.4e} {:.4e}".format(avg_ssim4,avg_ssim_y4,avg_lr_ssim4,avg_lr_ssim_y4))
+                logger_val.info("val1 SSIM {:.4e} {:.4e} {:.4e} {:.4e}".format(
+                    avg_ssim1, avg_ssim_y1, avg_lr_ssim1, avg_lr_ssim_y1))
+                logger_val.info("val2 {:.4e} {:.4e} {:.4e} {:.4e}".format(
+                    avg_ssim2, avg_ssim_y2, avg_lr_ssim2, avg_lr_ssim_y2))
+                logger_val.info("val3 {:.4e} {:.4e} {:.4e} {:.4e}".format(
+                    avg_ssim3, avg_ssim_y3, avg_lr_ssim3, avg_lr_ssim_y3))
+                logger_val.info("val4 {:.4e} {:.4e} {:.4e} {:.4e}".format(
+                    avg_ssim4, avg_ssim_y4, avg_lr_ssim4, avg_lr_ssim_y4))
                 logger_val.info('# Validation AVG # SSIM: {:.4e}, {:.4e} LR SSIM: {:.4e}, {:.4e} .'\
                 .format(avg_ssim,avg_ssim_y,avg_lr_ssim,avg_lr_ssim_y))
 
@@ -334,8 +404,7 @@ def main():
                 if opt['use_tb_logger'] and 'debug' not in opt['name']:
                     tb_logger.add_scalar('psnr', avg_psnr, current_step)
 
-            
-
+    # end of training
     if rank <= 0:
         logger.info('Saving the final model.')
         model.save('latest')

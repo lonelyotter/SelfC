@@ -7,8 +7,17 @@ Loader, Dumper = OrderedYaml()
 
 
 def parse(opt_path, is_train=True):
+    '''
+    parse and modify some options.
+    
+    opt_path: path to the option file
+    is_train: whether in train phase
+
+    return: a dict containing all options
+    '''
     with open(opt_path, mode='r') as f:
         opt = yaml.load(f, Loader=Loader)
+
     # export CUDA_VISIBLE_DEVICES
     if opt['gpu_ids']:
         gpu_list = ','.join(str(x) for x in opt['gpu_ids'])
@@ -16,26 +25,38 @@ def parse(opt_path, is_train=True):
         print('export CUDA_VISIBLE_DEVICES=' + gpu_list)
 
     opt['is_train'] = is_train
+
     if opt['distortion'] == 'sr':
         scale = opt['scale']
 
     # datasets
     for phase, dataset in opt['datasets'].items():
+
+        # phase is the string before '_' 
         phase = phase.split('_')[0]
         dataset['phase'] = phase
+
         if opt['distortion'] == 'sr':
             dataset['scale'] = scale
+
         is_lmdb = False
+
+        # set ground truth path
         if dataset.get('dataroot_GT', None) is not None:
             dataset['dataroot_GT'] = osp.expanduser(dataset['dataroot_GT'])
             if dataset['dataroot_GT'].endswith('lmdb'):
                 is_lmdb = True
+
         # if dataset.get('dataroot_GT_bg', None) is not None:
         #     dataset['dataroot_GT_bg'] = osp.expanduser(dataset['dataroot_GT_bg'])
+
+        # set low quality path 
         if dataset.get('dataroot_LQ', None) is not None:
             dataset['dataroot_LQ'] = osp.expanduser(dataset['dataroot_LQ'])
             if dataset['dataroot_LQ'].endswith('lmdb'):
                 is_lmdb = True
+        
+        # set data type
         dataset['data_type'] = 'lmdb' if is_lmdb else 'img'
         if dataset['mode'].endswith('mc'):  # for memcached
             dataset['data_type'] = 'mc'
@@ -45,7 +66,10 @@ def parse(opt_path, is_train=True):
     for key, path in opt['path'].items():
         if path and key in opt['path'] and key != 'strict_load':
             opt['path'][key] = osp.expanduser(path)
+    
+    # project root
     opt['path']['root'] = osp.abspath(osp.join(__file__, osp.pardir, osp.pardir, osp.pardir))
+
     if is_train:
         experiments_root = osp.join(opt['path']['root'], 'experiments', opt['name'])
         opt['path']['experiments_root'] = experiments_root
@@ -72,7 +96,16 @@ def parse(opt_path, is_train=True):
 
 
 def dict2str(opt, indent_l=1):
-    '''dict to string for logger'''
+    '''
+    dict to string for logger
+
+    Args:
+        opt: dict or list of dict
+        indent_l: indent level
+    
+    Returns:
+        msg: string
+    '''
     msg = ''
     for k, v in opt.items():
         if isinstance(v, dict):
@@ -89,8 +122,17 @@ class NoneDict(dict):
         return None
 
 
-# convert to NoneDict, which return None for missing key.
 def dict_to_nonedict(opt):
+    '''
+    Convert dict to NoneDict, which return None for missing key.
+    This is used to avoid KeyError when setting default options.
+
+    Args:
+        opt: dict or list of dict
+    
+    Returns:
+        NoneDict or list of NoneDict
+    '''
     if isinstance(opt, dict):
         new_opt = dict()
         for key, sub_opt in opt.items():

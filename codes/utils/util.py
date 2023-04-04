@@ -44,6 +44,9 @@ def get_timestamp():
 
 
 def mkdir(path):
+    '''
+    make a directory
+    '''
     print("path:",path)
 
     if not type(path) == type("  "):
@@ -54,15 +57,24 @@ def mkdir(path):
 
 
 def mkdirs(paths):
+    '''
+    make multiple directories
+
+    Args:
+        paths (str or list): paths to be created
+    '''
     print("=== make dir",paths)
     if isinstance(paths, str):
         mkdir(paths)
-    else:
+    else: # list
         for path in paths:
             mkdir(path)
 
 
 def mkdir_and_rename(path):
+    '''
+    if path exists, rename the existing folder by adding a timestamp. Then create it.
+    '''
     if os.path.exists(path):
         new_name = path + '_archived_' + get_timestamp()
         print('Path already exists. Rename it to [{:s}]'.format(new_name))
@@ -73,6 +85,12 @@ def mkdir_and_rename(path):
 
 
 def set_random_seed(seed):
+    '''
+    set random seed
+
+    Args:
+        seed (int): random seed
+    '''
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -80,7 +98,17 @@ def set_random_seed(seed):
 
 
 def setup_logger(logger_name, root, phase, level=logging.INFO, screen=False, tofile=False):
-    '''set up logger'''
+    '''
+    set up logger
+
+    Args:
+        logger_name (str): name of the logger
+        root (str): root path of the logger file
+        phase (str): train, val, test plus other information
+        level (logging level): logging level
+        screen (bool): print to screen or not
+        tofile (bool): save to file or not
+    '''
     lg = logging.getLogger(logger_name)
     formatter = logging.Formatter('%(asctime)s.%(msecs)03d - %(levelname)s: %(message)s',
                                   datefmt='%y-%m-%d %H:%M:%S')

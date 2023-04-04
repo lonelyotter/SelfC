@@ -1,5 +1,4 @@
 # Gaussian kernel for downsampling
-import scipy.ndimage.filters as fi
 import numpy as np
 import torch.nn.functional as F
 import torch 
@@ -21,16 +20,6 @@ def Guassian_downsample(x, scale=4):
         # gaussian-smooth the dirac, resulting in a gaussian filter mask
         return fi.gaussian_filter(inp, nsig)
 
-    if scale == 2:
-        h = gkern(13, 0.8)  # 13 and 0.8 for x2
-    elif scale == 3:
-        h = gkern(13, 1.2)  # 13 and 1.2 for x3
-    elif scale == 4:
-        h = gkern(13, 1.6)  # 13 and 1.6 for x4
-    else:
-        print('Invalid upscaling factor: {} (Must be one of 2, 3, 4)'.format(R))
-        exit(1)
-
     C, T, H, W = x.size()
     x = x.contiguous().view(-1, 1, H, W) # depth convolution (channel-wise convolution)
     pad_w, pad_h = 6 + scale * 2, 6 + scale * 2  # 6 is the pad of the gaussian filter
@@ -49,4 +38,5 @@ def Guassian_downsample(x, scale=4):
     # if downsample to 28 on training time, use the below code.
     #x = x[:,:,scale:-scale,scale:-scale]
     x = x.view(C, T, x.size(2), x.size(3))
+    
     return x

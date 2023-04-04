@@ -5,6 +5,9 @@ import torch.utils.data
 
 
 def create_dataloader(dataset, dataset_opt, opt=None, sampler=None):
+    '''
+    Create a dataloader given a dataset.
+    '''
     phase = dataset_opt['phase']
     if phase == 'train':
         if opt['dist']:
@@ -17,6 +20,7 @@ def create_dataloader(dataset, dataset_opt, opt=None, sampler=None):
             num_workers = dataset_opt['n_workers'] * len(opt['gpu_ids'])
             batch_size = dataset_opt['batch_size']
             shuffle = True
+            
         return torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle,
                                            num_workers=num_workers, sampler=sampler, drop_last=True,
                                            pin_memory=False)
@@ -27,6 +31,9 @@ def create_dataloader(dataset, dataset_opt, opt=None, sampler=None):
 
 
 def create_dataset(dataset_opt):
+    '''
+    Create a dataset given a dataset option.
+    '''
     mode = dataset_opt['mode']
     print("f")
     print(mode)

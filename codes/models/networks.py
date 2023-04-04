@@ -35,54 +35,54 @@ def define_G(opt):
             'SelfC_CUTdownup','SelfC_CUT_sep_GAN', "SelfC_Contra_UP"]:
         from models.modules.SelfC_GMM_arch_inv import SelfCInvNet
         netG = SelfCInvNet(opt_net,opt_net['in_nc'], opt_net['out_nc'],subnet_type, opt_net['block_num'], down_num)
-    if model_type in ['SelfC_CUTdownup_noInv','SelfC_CUT_sep_noInv']:
-        from models.modules.SelfC_GMM_arch_noinv import SelfCNoInvNet
-        netG = SelfCNoInvNet(opt_net,opt_net['in_nc'], opt_net['out_nc'],subnet_type, opt_net['block_num'], down_num)
-    if "plain" in model_type:
-        from models.modules.Plain_arch import SelfCNoInvNet
-        netG = SelfCNoInvNet(opt_net,opt_net['in_nc'], opt_net['out_nc'],subnet_type, opt_net['block_num'], down_num)
+    # if model_type in ['SelfC_CUTdownup_noInv','SelfC_CUT_sep_noInv']:
+    #     from models.modules.SelfC_GMM_arch_noinv import SelfCNoInvNet
+    #     netG = SelfCNoInvNet(opt_net,opt_net['in_nc'], opt_net['out_nc'],subnet_type, opt_net['block_num'], down_num)
+    # if "plain" in model_type:
+    #     from models.modules.Plain_arch import SelfCNoInvNet
+    #     netG = SelfCNoInvNet(opt_net,opt_net['in_nc'], opt_net['out_nc'],subnet_type, opt_net['block_num'], down_num)
     
-    if model_type in ["SelfC_VRN"]:
-        from models.modules.SelfC_VRN_arch_inv import SelfCInvNet
-        netG = SelfCInvNet(opt_net,opt_net['in_nc'], opt_net['out_nc'],subnet_type, opt_net['block_num'], down_num)
-    if model_type in ["SelfC_VRN_haar"]:
-        from models.modules.SelfC_VRN_haar_arch_inv import SelfCInvNet
-        netG = SelfCInvNet(opt_net,opt_net['in_nc'], opt_net['out_nc'],subnet_type, opt_net['block_num'], down_num)
-    if model_type in ["VRN_CUT_sep",'VRN_Contra_UP','VRN','VRN_Contra_UP_index',"VRN_Cross",'VRN_Contra_UP_video']:
-        from models.modules.VRN_networks import Net
-        netG = Net(opt, subnet(subnet_type, init), down_num)
+    # if model_type in ["SelfC_VRN"]:
+    #     from models.modules.SelfC_VRN_arch_inv import SelfCInvNet
+    #     netG = SelfCInvNet(opt_net,opt_net['in_nc'], opt_net['out_nc'],subnet_type, opt_net['block_num'], down_num)
+    # if model_type in ["SelfC_VRN_haar"]:
+    #     from models.modules.SelfC_VRN_haar_arch_inv import SelfCInvNet
+    #     netG = SelfCInvNet(opt_net,opt_net['in_nc'], opt_net['out_nc'],subnet_type, opt_net['block_num'], down_num)
+    # if model_type in ["VRN_CUT_sep",'VRN_Contra_UP','VRN','VRN_Contra_UP_index',"VRN_Cross",'VRN_Contra_UP_video']:
+    #     from models.modules.VRN_networks import Net
+    #     netG = Net(opt, subnet(subnet_type, init), down_num)
 
     
-    if model_type in ["SelfC_EBM"]:
-        from models.modules.SelfC_EMB_arch_inv import SelfCInvNet
-        netG = SelfCInvNet(opt_net,opt_net['in_nc'], opt_net['out_nc'],subnet_type, opt_net['block_num'], down_num)
-    if model_type in ["SelfC_GMM_prog"]:
-        from models.modules.SelfC_GMM_prog_arch_inv import SelfCInvNet
-        netG = SelfCInvNet(opt_net,opt_net['in_nc'], opt_net['out_nc'],subnet_type, opt_net['block_num'], down_num)
-    elif model_type in ["SelfC_GMM_Codec"]:
-        from models.modules.SelfC_Codec_arch_inv import SelfCInvNet
-        netG = SelfCInvNet(opt_net,opt_net['in_nc'], opt_net['out_nc'],subnet_type,\
-             opt_net['block_num'], down_num,all_opt = opt)
-    elif model_type in ["VRN_Codec"]:
-        # print(opt)
-        # exit(0)
-        from models.modules.VRN_Codec_arch_inv import Net
-        netG = Net(opt, subnet(subnet_type, init), down_num)
-    elif model_type in ["SelfC_Noise"]:
-        from models.modules.SelfC_Noise_Lcond_arch_inv import SelfCInvNet
-        netG = SelfCInvNet(opt_net,opt_net['in_nc'], opt_net['out_nc'],subnet_type,\
-             opt_net['block_num'], down_num,all_opt = opt)
-    elif model_type in ["SR_Noise"]:
-        from models.modules.Noise_SR_arch import SelfCInvNet
-        netG = SelfCInvNet(opt_net,opt_net['in_nc'], opt_net['out_nc'],subnet_type,\
-             opt_net['block_num'], down_num,all_opt = opt)
-    elif model_type in ["Encoder_Shell"]:
-        from models.modules.Encoder_Shell import SelfCInvNet
-        netG = SelfCInvNet(opt_net,opt_net['in_nc'], opt_net['out_nc'],subnet_type,\
-             opt_net['block_num'], down_num,all_opt = opt)
-    elif model_type in ["SelfC_Imgcodec"]:
-        from models.modules.SelfC_ImgCodec_arch_inv import SelfCInvNet
-        netG = SelfCInvNet(opt_net,opt_net['in_nc'], opt_net['out_nc'],subnet_type, opt_net['block_num'], down_num)
+    # if model_type in ["SelfC_EBM"]:
+    #     from models.modules.SelfC_EMB_arch_inv import SelfCInvNet
+    #     netG = SelfCInvNet(opt_net,opt_net['in_nc'], opt_net['out_nc'],subnet_type, opt_net['block_num'], down_num)
+    # if model_type in ["SelfC_GMM_prog"]:
+    #     from models.modules.SelfC_GMM_prog_arch_inv import SelfCInvNet
+    #     netG = SelfCInvNet(opt_net,opt_net['in_nc'], opt_net['out_nc'],subnet_type, opt_net['block_num'], down_num)
+    # elif model_type in ["SelfC_GMM_Codec"]:
+    #     from models.modules.SelfC_Codec_arch_inv import SelfCInvNet
+    #     netG = SelfCInvNet(opt_net,opt_net['in_nc'], opt_net['out_nc'],subnet_type,\
+    #          opt_net['block_num'], down_num,all_opt = opt)
+    # elif model_type in ["VRN_Codec"]:
+    #     # print(opt)
+    #     # exit(0)
+    #     from models.modules.VRN_Codec_arch_inv import Net
+    #     netG = Net(opt, subnet(subnet_type, init), down_num)
+    # elif model_type in ["SelfC_Noise"]:
+    #     from models.modules.SelfC_Noise_Lcond_arch_inv import SelfCInvNet
+    #     netG = SelfCInvNet(opt_net,opt_net['in_nc'], opt_net['out_nc'],subnet_type,\
+    #          opt_net['block_num'], down_num,all_opt = opt)
+    # elif model_type in ["SR_Noise"]:
+    #     from models.modules.Noise_SR_arch import SelfCInvNet
+    #     netG = SelfCInvNet(opt_net,opt_net['in_nc'], opt_net['out_nc'],subnet_type,\
+    #          opt_net['block_num'], down_num,all_opt = opt)
+    # elif model_type in ["Encoder_Shell"]:
+    #     from models.modules.Encoder_Shell import SelfCInvNet
+    #     netG = SelfCInvNet(opt_net,opt_net['in_nc'], opt_net['out_nc'],subnet_type,\
+    #          opt_net['block_num'], down_num,all_opt = opt)
+    # elif model_type in ["SelfC_Imgcodec"]:
+    #     from models.modules.SelfC_ImgCodec_arch_inv import SelfCInvNet
+    #     netG = SelfCInvNet(opt_net,opt_net['in_nc'], opt_net['out_nc'],subnet_type, opt_net['block_num'], down_num)
     return netG
 
 

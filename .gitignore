@@ -8,6 +8,8 @@ experiments/pretrained_models/*
 # !experiments/pretrained_models/SRResNet_bicx4_in3nf64nb16.pth
 !experiments/pretrained_models/README.md
 
+checkpoints/
+
 results/*
 tb_logger/*
 
@@ -33,3 +35,5 @@ data_samples/samples_byteimg
 data_samples/samples_colorimg
 data_samples/samples_segprob
 data_samples/samples_result
+
+__pycache__

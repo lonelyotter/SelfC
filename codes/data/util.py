@@ -11,7 +11,10 @@ import cv2
 ####################
 
 ###################### get image path list ######################
-IMG_EXTENSIONS = ['.jpg', '.JPG', '.jpeg', '.JPEG', '.png', '.PNG', '.ppm', '.PPM', '.bmp', '.BMP']
+IMG_EXTENSIONS = [
+    '.jpg', '.JPG', '.jpeg', '.JPEG', '.png', '.PNG', '.ppm', '.PPM', '.bmp',
+    '.BMP'
+]
 
 
 def is_image_file(filename):
@@ -33,7 +36,8 @@ def _get_paths_from_images(path):
 
 def _get_paths_from_lmdb(dataroot):
     '''get image path list from lmdb meta info'''
-    meta_info = pickle.load(open(os.path.join(dataroot, 'meta_info.pkl'), 'rb'))
+    meta_info = pickle.load(open(os.path.join(dataroot, 'meta_info.pkl'),
+                                 'rb'))
     paths = meta_info['keys']
     sizes = meta_info['resolution']
     if len(sizes) == 1:
@@ -51,39 +55,70 @@ def get_image_paths(data_type, dataroot):
         elif data_type == 'img':
             paths = sorted(_get_paths_from_images(dataroot))
         else:
-            raise NotImplementedError('data_type [{:s}] is not recognized.'.format(data_type))
+            raise NotImplementedError(
+                'data_type [{:s}] is not recognized.'.format(data_type))
     return paths, sizes
+
 
 import os
 
-def _get_paths_from_vids(dataroot,data_list,max_size):
-    '''get image path list from image folder'''
+
+def _get_paths_from_vids(dataroot, data_list, max_size):
+    '''
+    get image path list from image folder
+
+    Args:
+        dataroot: path to the data root
+        data_list: path to the data list
+        max_size: unused
+    
+    Returns:
+        images: list of image paths, each element is a list of image paths of a video
+    '''
     images = []
     data_list_f = open(data_list)
     for vid_path in data_list_f.readlines():
-        dir_path = os.path.join(dataroot,vid_path.strip())
+        # dir_path is the path of a video 
+        dir_path = os.path.join(dataroot, vid_path.strip())
         img_num = len(os.listdir(dir_path))
         # exit()
-        vid_img_list = [ os.path.join(dataroot,vid_path.strip(),"im"+str(i))+".png" for i in range(1,img_num+1)]
+        vid_img_list = [
+            os.path.join(dataroot, vid_path.strip(), "im" + str(i)) + ".png"
+            for i in range(1, img_num + 1)
+        ]
         images += [vid_img_list]
     return images
 
-def get_vid_paths(data_type, dataroot,data_list,is_train):
-    '''get image path list
-    support lmdb or image files'''
+
+def get_vid_paths(data_type, dataroot, data_list, is_train):
+    '''
+    get image path list
+    only support image files
+
+    Args:
+        data_type: lmdb or img, only img is supported
+        dataroot: path to the data root
+        data_list: path to the data list
+        is_train: unused
+    
+    Returns:
+        paths: list of image paths, each element is a list of image paths of a video
+        sizes: None
+    '''
     paths, sizes = None, None
     max_size = 200
     if is_train:
         max_size = 8
     if dataroot is not None:
         if data_type == 'img':
-            paths = sorted(_get_paths_from_vids(dataroot,data_list,max_size))
+            paths = sorted(_get_paths_from_vids(dataroot, data_list, max_size))
             # print(paths)
             # print("++++++++++++++")
             # print(paths[0],sizes)
             # exit()
         else:
-            raise NotImplementedError('data_type [{:s}] is not recognized.'.format(data_type))
+            raise NotImplementedError(
+                'data_type [{:s}] is not recognized.'.format(data_type))
     return paths, sizes
 
 
@@ -98,14 +133,16 @@ def _read_img_lmdb(env, key, size):
     img = img_flat.reshape(H, W, C)
     return img
 
+
 import imageio
+
 
 def read_img1(env, path, size=None):
     '''read image by cv2 or from lmdb
     return: Numpy float32, HWC, BGR, [0,1]'''
-        #img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
+    #img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
     img = cv2.imread(path, cv2.IMREAD_COLOR)
-        # img = imageio.imread(path)
+    # img = imageio.imread(path)
     img = img.astype(np.float32) / 255.
     if img.ndim == 2:
         img = np.expand_dims(img, axis=2)
@@ -113,7 +150,7 @@ def read_img1(env, path, size=None):
     if img.shape[2] > 3:
         img = img[:, :, :3]
     return img
-  
+
 
 def read_img(env, path, size=None):
     # '''read image by cv2 or from lmdb
@@ -131,7 +168,8 @@ def read_img(env, path, size=None):
     # if img.shape[2] > 3:
     #     img = img[:, :, :3]
     # return img
-    ref_image = imageio.imread(path).transpose(2, 0, 1).astype(np.float32) / 255.0
+    ref_image = imageio.imread(path).transpose(2, 0, 1).astype(
+        np.float32) / 255.0
     # fuck = 64
     fuck = 1
     h = (ref_image.shape[1] // fuck) * fuck
@@ -147,7 +185,7 @@ def read_img(env, path, size=None):
 ####################
 
 
-def augment(img_list, hflip, vflip,rot90):
+def augment(img_list, hflip, vflip, rot90):
     # horizontal flip OR rotate
     # hflip = hflip and random.random() < 0.5
     # vflip = rot and random.random() < 0.5
@@ -227,22 +265,31 @@ def rgb2ycbcr(img, only_y=True):
     if only_y:
         rlt = np.dot(img, [65.481, 128.553, 24.966]) / 255.0 + 16.0
     else:
-        rlt = np.matmul(img, [[65.481, -37.797, 112.0], [128.553, -74.203, -93.786],
-                              [24.966, 112.0, -18.214]]) / 255.0 + [16, 128, 128]
+        rlt = np.matmul(img,
+                        [[65.481, -37.797, 112.0], [128.553, -74.203, -93.786],
+                         [24.966, 112.0, -18.214]]) / 255.0 + [16, 128, 128]
     if in_img_type == np.uint8:
         rlt = rlt.round()
     else:
         rlt /= 255.
     return rlt.astype(in_img_type)
 
+
 import torch
+
+
 def rgb_to_ycbcr(input):
     # input is mini-batch N x 3 x H x W of an RGB image
-    output = torch.zeros([input.size(0),1,input.size(2),input.size(3)])
-    output[:, 0, :, :] = input[:, 0, :, :] * 65.481 + input[:, 1, :, :] * 128.553 + input[:, 2, :, :] * 24.966 + 16
+    output = torch.zeros([input.size(0), 1, input.size(2), input.size(3)])
+    output[:,
+           0, :, :] = input[:,
+                            0, :, :] * 65.481 + input[:,
+                                                      1, :, :] * 128.553 + input[:,
+                                                                                 2, :, :] * 24.966 + 16
     # similarly write output[:, 1, :, :] and output[:, 2, :, :] using formulas from https://en.wikipedia.org/wiki/YCbCr
-    output = output/255.0
+    output = output / 255.0
     return output
+
 
 def bgr2ycbcr(img, only_y=True):
     '''bgr version of rgb2ycbcr
@@ -259,8 +306,9 @@ def bgr2ycbcr(img, only_y=True):
     if only_y:
         rlt = np.dot(img, [24.966, 128.553, 65.481]) / 255.0 + 16.0
     else:
-        rlt = np.matmul(img, [[24.966, 112.0, -18.214], [128.553, -74.203, -93.786],
-                              [65.481, -37.797, 112.0]]) / 255.0 + [16, 128, 128]
+        rlt = np.matmul(img,
+                        [[24.966, 112.0, -18.214], [128.553, -74.203, -93.786],
+                         [65.481, -37.797, 112.0]]) / 255.0 + [16, 128, 128]
     if in_img_type == np.uint8:
         rlt = rlt.round()
     else:
@@ -279,8 +327,11 @@ def ycbcr2rgb(img):
     if in_img_type != np.uint8:
         img *= 255.
     # convert
-    rlt = np.matmul(img, [[0.00456621, 0.00456621, 0.00456621], [0, -0.00153632, 0.00791071],
-                          [0.00625893, -0.00318811, 0]]) * 255.0 + [-222.921, 135.576, -276.836]
+    rlt = np.matmul(img, [[0.00456621, 0.00456621, 0.00456621],
+                          [0, -0.00153632, 0.00791071],
+                          [0.00625893, -0.00318811, 0]]) * 255.0 + [
+                              -222.921, 135.576, -276.836
+                          ]
     if in_img_type == np.uint8:
         rlt = rlt.round()
     else:
@@ -301,7 +352,7 @@ def modcrop(img_in, scale):
         img = img[:H - H_r, :W - W_r, :]
     else:
         raise ValueError('Wrong img ndim: [{:d}].'.format(img.ndim))
-    
+
     return img
 
 
@@ -316,11 +367,13 @@ def cubic(x):
     absx2 = absx**2
     absx3 = absx**3
     return (1.5 * absx3 - 2.5 * absx2 + 1) * (
-        (absx <= 1).type_as(absx)) + (-0.5 * absx3 + 2.5 * absx2 - 4 * absx + 2) * ((
-            (absx > 1) * (absx <= 2)).type_as(absx))
+        (absx <= 1).type_as(absx)) + (-0.5 * absx3 + 2.5 * absx2 - 4 * absx +
+                                      2) * (((absx > 1) *
+                                             (absx <= 2)).type_as(absx))
 
 
-def calculate_weights_indices(in_length, out_length, scale, kernel, kernel_width, antialiasing):
+def calculate_weights_indices(in_length, out_length, scale, kernel,
+                              kernel_width, antialiasing):
     if (scale < 1) and (antialiasing):
         # Use a modified kernel to simultaneously interpolate and antialias- larger kernel width
         kernel_width = kernel_width / scale
@@ -344,8 +397,8 @@ def calculate_weights_indices(in_length, out_length, scale, kernel, kernel_width
 
     # The indices of the input pixels involved in computing the k-th output
     # pixel are in row k of the indices matrix.
-    indices = left.view(out_length, 1).expand(out_length, P) + torch.linspace(0, P - 1, P).view(
-        1, P).expand(out_length, P)
+    indices = left.view(out_length, 1).expand(out_length, P) + torch.linspace(
+        0, P - 1, P).view(1, P).expand(out_length, P)
 
     # The weights used to compute the k-th output pixel are in row k of the
     # weights matrix.
@@ -414,9 +467,12 @@ def imresize(img, scale, antialiasing=True):
     kernel_width = weights_H.size(1)
     for i in range(out_H):
         idx = int(indices_H[i][0])
-        out_1[0, i, :] = img_aug[0, idx:idx + kernel_width, :].transpose(0, 1).mv(weights_H[i])
-        out_1[1, i, :] = img_aug[1, idx:idx + kernel_width, :].transpose(0, 1).mv(weights_H[i])
-        out_1[2, i, :] = img_aug[2, idx:idx + kernel_width, :].transpose(0, 1).mv(weights_H[i])
+        out_1[0, i, :] = img_aug[0, idx:idx + kernel_width, :].transpose(
+            0, 1).mv(weights_H[i])
+        out_1[1, i, :] = img_aug[1, idx:idx + kernel_width, :].transpose(
+            0, 1).mv(weights_H[i])
+        out_1[2, i, :] = img_aug[2, idx:idx + kernel_width, :].transpose(
+            0, 1).mv(weights_H[i])
 
     # process W dimension
     # symmetric copying
@@ -437,9 +493,12 @@ def imresize(img, scale, antialiasing=True):
     kernel_width = weights_W.size(1)
     for i in range(out_W):
         idx = int(indices_W[i][0])
-        out_2[0, :, i] = out_1_aug[0, :, idx:idx + kernel_width].mv(weights_W[i])
-        out_2[1, :, i] = out_1_aug[1, :, idx:idx + kernel_width].mv(weights_W[i])
-        out_2[2, :, i] = out_1_aug[2, :, idx:idx + kernel_width].mv(weights_W[i])
+        out_2[0, :, i] = out_1_aug[0, :,
+                                   idx:idx + kernel_width].mv(weights_W[i])
+        out_2[1, :, i] = out_1_aug[1, :,
+                                   idx:idx + kernel_width].mv(weights_W[i])
+        out_2[2, :, i] = out_1_aug[2, :,
+                                   idx:idx + kernel_width].mv(weights_W[i])
 
     return out_2
 
@@ -484,9 +543,12 @@ def imresize_np(img, scale, antialiasing=True):
     kernel_width = weights_H.size(1)
     for i in range(out_H):
         idx = int(indices_H[i][0])
-        out_1[i, :, 0] = img_aug[idx:idx + kernel_width, :, 0].transpose(0, 1).mv(weights_H[i])
-        out_1[i, :, 1] = img_aug[idx:idx + kernel_width, :, 1].transpose(0, 1).mv(weights_H[i])
-        out_1[i, :, 2] = img_aug[idx:idx + kernel_width, :, 2].transpose(0, 1).mv(weights_H[i])
+        out_1[i, :, 0] = img_aug[idx:idx + kernel_width, :,
+                                 0].transpose(0, 1).mv(weights_H[i])
+        out_1[i, :, 1] = img_aug[idx:idx + kernel_width, :,
+                                 1].transpose(0, 1).mv(weights_H[i])
+        out_1[i, :, 2] = img_aug[idx:idx + kernel_width, :,
+                                 2].transpose(0, 1).mv(weights_H[i])
 
     # process W dimension
     # symmetric copying
@@ -507,9 +569,12 @@ def imresize_np(img, scale, antialiasing=True):
     kernel_width = weights_W.size(1)
     for i in range(out_W):
         idx = int(indices_W[i][0])
-        out_2[:, i, 0] = out_1_aug[:, idx:idx + kernel_width, 0].mv(weights_W[i])
-        out_2[:, i, 1] = out_1_aug[:, idx:idx + kernel_width, 1].mv(weights_W[i])
-        out_2[:, i, 2] = out_1_aug[:, idx:idx + kernel_width, 2].mv(weights_W[i])
+        out_2[:, i, 0] = out_1_aug[:, idx:idx + kernel_width,
+                                   0].mv(weights_W[i])
+        out_2[:, i, 1] = out_1_aug[:, idx:idx + kernel_width,
+                                   1].mv(weights_W[i])
+        out_2[:, i, 2] = out_1_aug[:, idx:idx + kernel_width,
+                                   2].mv(weights_W[i])
 
     return out_2.numpy()
 
@@ -519,7 +584,8 @@ if __name__ == '__main__':
     # read images
     img = cv2.imread('test.png')
     img = img * 1.0 / 255
-    img = torch.from_numpy(np.transpose(img[:, :, [2, 1, 0]], (2, 0, 1))).float()
+    img = torch.from_numpy(np.transpose(img[:, :, [2, 1, 0]],
+                                        (2, 0, 1))).float()
     # imresize
     scale = 1 / 4
     import time
@@ -532,5 +598,8 @@ if __name__ == '__main__':
     print('average time: {}'.format(total_time / 10))
 
     import torchvision.utils
-    torchvision.utils.save_image((rlt * 255).round() / 255, 'rlt.png', nrow=1, padding=0,
+    torchvision.utils.save_image((rlt * 255).round() / 255,
+                                 'rlt.png',
+                                 nrow=1,
+                                 padding=0,
                                  normalize=False)

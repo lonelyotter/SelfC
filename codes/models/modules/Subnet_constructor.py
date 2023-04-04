@@ -131,6 +131,8 @@ class D2DTInput(nn.Module):
         if io_type == "2d":
             x5 = x5.transpose(1,2).reshape(bt,-1,w,h)
         return x5
+
+        
 class D2DLTInput(nn.Module):
     def __init__(self, channel_in, channel_out, init='xavier', gc=32, bias=True,INN_init = True):
         super(D2DLTInput, self).__init__()

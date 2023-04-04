@@ -1,15 +1,15 @@
 
-#  python -m torch.distributed.launch --nproc_per_node 2 --master_port 2478 train.py -opt ./options/train/train_rescaling_selfc_large.yml --launcher pytorch
+#  python -m torch.distributed.launch --nproc_per_node 2 --master_port 2478 train.py -opt ./options/train/train_rescaling_selfc_small.yml --launcher pytorch
 
 #### general settings
 
-name: SelfC_large_GMM_STP6
+name: SelfC_small_GMM_STP6
 use_tb_logger: true
 model: SelfC_GMM
-distortion: sr_bd # downsampling method: pytorch_bicubic, sr_bd (gaussian), matlab
+distortion: sr_bd
 scale: 4
 
-gpu_ids: [1]
+gpu_ids: [0,1]
 
 
 #### datasets
@@ -23,7 +23,7 @@ datasets:
     video_len: 7
     use_shuffle: true
     n_workers: 2  # per GPU
-    batch_size: 4
+    batch_size: 8
     GT_size: 144
     use_flip: true
     use_rot: true
@@ -36,6 +36,7 @@ datasets:
     dataroot_GT: /hdd/shc/SelfC/videoSR/city/ds_7_to_7_new # path to validation HR images
     dataroot_list: /hdd/shc/SelfC/videoSR/city/ds_7_to_7_new/testlist.txt  # path to validation reference LR images, not necessary, if not provided, LR images will be generated in dataloader
     video_len: 7
+
   val2:
     name: walk
     batch_size: 1
@@ -43,6 +44,7 @@ datasets:
     dataroot_GT: /hdd/shc/SelfC/videoSR/walk/ds_7_to_7_new # path to validation HR images
     dataroot_list: /hdd/shc/SelfC/videoSR/walk/ds_7_to_7_new/testlist.txt  # path to validation reference LR images, not necessary, if not provided, LR images will be generated in dataloader
     video_len: 7
+
   val3:
     name: calendar
     batch_size: 1
@@ -50,6 +52,7 @@ datasets:
     dataroot_GT: /hdd/shc/SelfC/videoSR/calendar/ds_7_to_7_new # path to validation HR images
     dataroot_list: /hdd/shc/SelfC/videoSR/calendar/ds_7_to_7_new/testlist.txt  # path to validation reference LR images, not necessary, if not provided, LR images will be generated in dataloader
     video_len: 7
+
   val4:
     name: foliage
     batch_size: 1
@@ -57,7 +60,6 @@ datasets:
     dataroot_GT: /hdd/shc/SelfC/videoSR/foliage/ds_7_to_7_new # path to validation HR images
     dataroot_list: /hdd/shc/SelfC/videoSR/foliage/ds_7_to_7_new/testlist.txt  # path to validation reference LR images, not necessary, if not provided, LR images will be generated in dataloader
     video_len: 7
-    
 
 #### network structures
 
@@ -66,7 +68,7 @@ network_G:
       subnet_type: D2DTNet
   in_nc: 3
   out_nc: 3
-  block_num: [4, 4]
+  block_num: [1, 1]
   scale: 4
   init: xavier
   global_module: nonlocal
@@ -111,6 +113,7 @@ train:
 
   manual_seed: 10
 
+  # experiment iteration interval
   val_freq: !!float 1e4
 
   lambda_fit_forw: 1

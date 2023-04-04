@@ -10,8 +10,8 @@ datasets:
   test_1:  # the 1st test dataset
     name: val_VIMEO90k
     mode: LQGTVID
-    dataroot_GT: /data_video/vimeo90k/vimeo90k/vimeo_septuplet/sequences # path to validation HR images
-    dataroot_list: /data_video/vimeo90k/vimeo90k/vimeo_septuplet/sep_testlist.txt  # path to validation reference LR images, not necessary, if not provided, LR images will be generated in dataloader
+    dataroot_GT: /hdd/shc/vimeo_septuplet/sequences # path to validation HR images
+    dataroot_list: /hdd/shc/vimeo_septuplet/sep_testlist.txt  # path to validation reference LR images, not necessary, if not provided, LR images will be generated in dataloader
     video_len: 7
 
 #### network
@@ -36,5 +36,5 @@ network_G:
 
 #### path
 path:
-  pretrain_model_G: /data_video/code/SelfC/selfc_framework/experiments/SelfC_large_GMM_STP6/models/390000_G.pth
+  pretrain_model_G: /home/songhc/SelfC/pretrained_models/selfc_large_pretrain.pth
   strict_load: True
