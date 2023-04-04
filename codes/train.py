@@ -282,7 +282,7 @@ def main():
     #### training
     logger.info('Start training from epoch: {:d}, iter: {:d}'.format(
         start_epoch, current_step))
-    
+
     for epoch in range(start_epoch, total_epochs + 1):
         if opt['dist']:
             train_sampler.set_epoch(epoch)
@@ -343,23 +343,30 @@ def main():
                 avg_ssim4,avg_ssim_y4,avg_lr_ssim4,avg_lr_ssim_y4,\
                      = \
                 cal_metric(val_loader4,"val4",model,opt,current_step)
-                avg_psnr = (avg_psnr1 + avg_psnr2 + avg_psnr3 + avg_psnr4) / 4
+
+                avg_psnr = (avg_psnr1 + avg_psnr2 + avg_psnr3 + avg_psnr4) / 4\
+
                 avg_psnr_y = (avg_psnr_y1 + avg_psnr_y2 + avg_psnr_y3 +
                               avg_psnr_y4) / 4
+
                 avg_lr_psnr = (avg_lr_psnr1 + avg_lr_psnr2 + avg_lr_psnr3 +
                                avg_lr_psnr4) / 4
+
                 avg_lr_psnr_y = (avg_lr_psnr_y1 + avg_lr_psnr_y2 +
                                  avg_lr_psnr_y3 + avg_lr_psnr_y4) / 4
 
                 avg_ssim = (avg_ssim1 + avg_ssim2 + avg_ssim3 + avg_ssim4) / 4
+
                 avg_ssim_y = (avg_ssim_y1 + avg_ssim_y2 + avg_ssim_y3 +
                               avg_ssim_y4) / 4
+
                 avg_lr_ssim = (avg_lr_ssim1 + avg_lr_ssim2 + avg_lr_ssim3 +
                                avg_lr_ssim4) / 4
+
                 avg_lr_ssim_y = (avg_lr_ssim_y1 + avg_lr_ssim_y2 +
                                  avg_lr_ssim_y3 + avg_lr_ssim_y4) / 4
 
-                # log
+                # base logger
                 logger.info("val1 {:.4e} {:.4e} {:.4e} {:.4e}".format(
                     avg_psnr1, avg_psnr_y1, avg_lr_psnr1, avg_lr_psnr_y1))
                 logger.info("val2 {:.4e} {:.4e} {:.4e} {:.4e}".format(
@@ -370,6 +377,8 @@ def main():
                     avg_psnr4, avg_psnr_y4, avg_lr_psnr4, avg_lr_psnr_y4))
                 logger.info('# Validation AVG # PSNR: {:.4e},PSNR_Y {:.4e} LR PSNR: {:.4e},PSNR_Y {:.4e} .'\
                 .format(avg_psnr,avg_psnr_y,avg_lr_psnr,avg_lr_psnr_y))
+
+                # validation logger
                 logger_val = logging.getLogger('val')  # validation logger
                 logger_val.info(
                     '<epoch:{:3d}, iter:{:8,d}> psnr: {:.4e}.'.format(
@@ -395,11 +404,13 @@ def main():
                 logger_val.info('# Validation AVG # SSIM: {:.4e}, {:.4e} LR SSIM: {:.4e}, {:.4e} .'\
                 .format(avg_ssim,avg_ssim_y,avg_lr_ssim,avg_lr_ssim_y))
 
+                # update best model
                 if avg_psnr > validation_max_metric:
                     logger_val.info("achieve best performance! iter {}, perform RGB {:.4e} Y {:.4e}"\
                         .format(current_step,avg_psnr,avg_psnr_y))
                     validation_max_metric = avg_psnr
                     model.save("best")
+                    
                 # tensorboard logger
                 if opt['use_tb_logger'] and 'debug' not in opt['name']:
                     tb_logger.add_scalar('psnr', avg_psnr, current_step)

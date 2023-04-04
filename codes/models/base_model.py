@@ -8,7 +8,8 @@ from torch.nn.parallel import DistributedDataParallel
 class BaseModel():
     def __init__(self, opt):
         self.opt = opt
-        self.device = torch.device('cuda' if opt['gpu_ids'] is not None else 'cpu')
+        self.device = torch.device(
+            'cuda' if opt['gpu_ids'] is not None else 'cpu')
         self.is_train = opt['is_train']
         self.schedulers = []
         self.optimizers = []
@@ -45,7 +46,8 @@ class BaseModel():
         # get the initial lr, which is set by the scheduler
         init_lr_groups_l = []
         for optimizer in self.optimizers:
-            init_lr_groups_l.append([v['initial_lr'] for v in optimizer.param_groups])
+            init_lr_groups_l.append(
+                [v['initial_lr'] for v in optimizer.param_groups])
         return init_lr_groups_l
 
     def update_learning_rate(self, cur_iter, warmup_iter=-1):
@@ -58,7 +60,8 @@ class BaseModel():
             # modify warming-up learning rates
             warm_up_lr_l = []
             for init_lr_g in init_lr_g_l:
-                warm_up_lr_l.append([v / warmup_iter * cur_iter for v in init_lr_g])
+                warm_up_lr_l.append(
+                    [v / warmup_iter * cur_iter for v in init_lr_g])
             # set learning rate
             self._set_lr(warm_up_lr_l)
 
@@ -68,16 +71,26 @@ class BaseModel():
 
     def get_network_description(self, network):
         '''Get the string and total parameters of the network'''
-        if isinstance(network, nn.DataParallel) or isinstance(network, DistributedDataParallel):
+        if isinstance(network, nn.DataParallel) or isinstance(
+                network, DistributedDataParallel):
             network = network.module
         s = str(network)
         n = sum(map(lambda x: x.numel(), network.parameters()))
         return s, n
 
     def save_network(self, network, network_label, iter_label):
+        '''
+        Save the model to the disk.
+
+        Args:
+            network: the network to be saved.
+            network_label (str): the name of the network.
+            iter_label (str): current iteration label.
+        '''
         save_filename = '{}_{}.pth'.format(iter_label, network_label)
         save_path = os.path.join(self.opt['path']['models'], save_filename)
-        if isinstance(network, nn.DataParallel) or isinstance(network, DistributedDataParallel):
+        if isinstance(network, nn.DataParallel) or isinstance(
+                network, DistributedDataParallel):
             network = network.module
         state_dict = network.state_dict()
         for key, param in state_dict.items():
@@ -85,16 +98,18 @@ class BaseModel():
         torch.save(state_dict, save_path)
 
     def load_network(self, load_path, network, strict=True):
-        if isinstance(network, nn.DataParallel) or isinstance(network, DistributedDataParallel):
+        '''
+        load saved network to the model
+        '''
+        if isinstance(network, nn.DataParallel) or isinstance(
+                network, DistributedDataParallel):
             network = network.module
         load_net = torch.load(load_path)
         load_net_clean = OrderedDict()  # remove unnecessary 'module.'
         for k, v in load_net.items():
-           
+
             if "Quantization_H265_Suggrogate" in k:
                 continue
-      
-       
 
             if k.startswith('module.'):
                 load_net_clean[k[7:]] = v
@@ -105,15 +120,22 @@ class BaseModel():
         #         load_net_clean[k.replace("operations","operations")] = v
         # print(load_net_clean.keys())
         network.load_state_dict(load_net_clean, strict=strict)
+
     def save_training_state(self, epoch, iter_step):
         '''Saves training state during training, which will be used for resuming'''
-        state = {'epoch': epoch, 'iter': iter_step, 'schedulers': [], 'optimizers': []}
+        state = {
+            'epoch': epoch,
+            'iter': iter_step,
+            'schedulers': [],
+            'optimizers': []
+        }
         for s in self.schedulers:
             state['schedulers'].append(s.state_dict())
         for o in self.optimizers:
             state['optimizers'].append(o.state_dict())
         save_filename = '{}.state'.format(iter_step)
-        save_path = os.path.join(self.opt['path']['training_state'], save_filename)
+        save_path = os.path.join(self.opt['path']['training_state'],
+                                 save_filename)
         torch.save(state, save_path)
 
     def resume_training(self, resume_state):

@@ -508,7 +508,7 @@ class SelfCInvNet(nn.Module):
             # loss_c = self.stp_net.neg_llh(hf)
             loss_c = out.mean() * 0
             return out, loss_c
-        else:
+        else: # backward
             bt, c, h, w = out.size()
             t = GlobalVar.get_Temporal_LEN()
 
@@ -597,5 +597,3 @@ class SelfCInvNet(nn.Module):
 #         else:
 #             return out
 from models.modules.Subnet_constructor import subnet
-
-import models.modules.module_util as mutil

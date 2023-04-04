@@ -363,4 +363,10 @@ class SelfCModel(BaseModel):
                               self.opt['path']['strict_load'])
 
     def save(self, iter_label):
+        '''
+        save current model
+
+        Args:
+            iter_label (int): current iteration step
+        '''
         self.save_network(self.netG, 'G', iter_label)
