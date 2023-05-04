@@ -59,12 +59,16 @@ def cal_metric(val_loader, val_ds_name, model, opt, current_step):
 
         if opt["save_image"]:
             # Save SR images for reference
-            save_img_path = os.path.join(img_dir,
-                                            '{:s}_{:d}_clip{:d}.png'.format(img_name, current_step,idx))
+            save_img_path = os.path.join(
+                img_dir,
+                '{:s}_{:d}_clip{:d}.png'.format(img_name, current_step, idx))
             util.save_img(util.tensor2img(visuals['SR']), save_img_path)
 
             # Save LR images
-            save_img_path_L = os.path.join(img_dir, '{:s}_forwLR_{:d}_clip{:d}.png'.format(img_name, current_step,idx))
+            save_img_path_L = os.path.join(
+                img_dir,
+                '{:s}_forwLR_{:d}_clip{:d}.png'.format(img_name, current_step,
+                                                       idx))
             util.save_img(util.tensor2img(visuals['LR']), save_img_path_L)
 
         # calculate PSNR
@@ -411,7 +415,7 @@ def main():
                         .format(current_step,avg_psnr,avg_psnr_y))
                     validation_max_metric = avg_psnr
                     model.save("best")
-                    
+
                 # tensorboard logger
                 if opt['use_tb_logger'] and 'debug' not in opt['name']:
                     tb_logger.add_scalar('psnr', avg_psnr, current_step)

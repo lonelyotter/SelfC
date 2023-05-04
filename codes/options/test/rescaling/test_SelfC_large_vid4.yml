@@ -1,6 +1,6 @@
 # python test_rescaling.py -opt ./options/test/rescaling/test_SelfC_large_vid4.yml
 
-name: test_SelfC_large_GMM
+name: test_SelfC_large_vid4
 suffix: ~  # add suffix to saved images
 model: SelfC_GMM
 distortion: sr_bd
