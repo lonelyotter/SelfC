@@ -317,7 +317,7 @@ class STPNet(nn.Module):
         self.scale = opt["scale"]
         self.K = opt["gmm_k"]
         self.stp_blk_num = self.stp_blk_num - 2
-        # c = 64
+
         c = 64
         # inner_c = 32
         self.local_m1 = D2DTInput(3, c, INN_init=False)
@@ -508,6 +508,7 @@ class SelfCInvNet(nn.Module):
             # loss_c = self.stp_net.neg_llh(hf)
             loss_c = out.mean() * 0
             return out, loss_c
+        
         else: # backward
             bt, c, h, w = out.size()
             t = GlobalVar.get_Temporal_LEN()
@@ -529,71 +530,5 @@ class SelfCInvNet(nn.Module):
                 if cal_jacobian:
                     jacobian += op.jacobian(out, rev)
             return out, recon_hf.transpose(1, 2).reshape(b * t, -1, h, w)
-        if cal_jacobian:
-            return out, jacobian
-        else:
-            return out
 
-
-# class SelfCInvNet(nn.Module):
-#     def __init__(self, opt, channel_in, channel_out,subnet_type, block_num, down_num):
-#         super(SelfCInvNet, self).__init__()
-#         operations = []
-#         current_channel = channel_in
-#         subnet_constructor = subnet(subnet_type,"xavier")
-#         for i in range(down_num):
-#             b = HaarDownsampling(current_channel)
-#             operations.append(b)
-#             current_channel *= 4
-#             for j in range(block_num[i]):
-#                 b = InvBlockExp(subnet_constructor, current_channel, channel_out)
-#                 operations.append(b)
-
-#         self.operations = nn.ModuleList(operations)
-
-#         self.stp_net = STPNet(opt)
-
-#     def forward(self, x, rev=False, cal_jacobian=False,lr_before_distor = None):
-#         out = x
-#         jacobian = 0
-
-#         if not rev:
-#             for op in self.operations:
-#                 out = op.forward(out, rev)
-#                 if cal_jacobian:
-#                     jacobian += op.jacobian(out, rev)
-#             bt,c,h,w = out.size()
-#             t = TEMP_LEN
-#             b = bt//t
-#             out = out.reshape(b,t,c,h,w).transpose(1,2)
-#             lf = out[:,0:3]
-#             hf = out[:,3:]
-#             out = out.transpose(1,2).reshape(b*t,c,h,w)
-#             self.stp_net(lf)
-#             loss_c = self.stp_net.neg_llh(hf)
-#             return out,loss_c
-#         else:
-#             bt,c,h,w = out.size()
-#             t = TEMP_LEN
-#             b = bt//t
-#             out = out.reshape(b,t,c,h,w).transpose(1,2)
-#             lr_input = x[:,0:3]
-
-#             bt,c,h,w = lr_input.size()
-#             b = bt//t
-#             lr_input = lr_input.reshape(b,t,c,h,w).transpose(1,2)
-
-#             self.stp_net(lr_input)
-#             recon_hf = self.stp_net.sample()
-#             out = torch.cat((lr_input,recon_hf),dim=1)
-#             out = out.transpose(1,2).reshape(b*t,out.size(1),h,w)
-#             for op in reversed(self.operations):
-#                 out = op.forward(out, rev)
-#                 if cal_jacobian:
-#                     jacobian += op.jacobian(out, rev)
-#             return out,recon_hf.transpose(1,2).reshape(b*t,-1,h,w)
-#         if cal_jacobian:
-#             return out, jacobian
-#         else:
-#             return out
 from models.modules.Subnet_constructor import subnet

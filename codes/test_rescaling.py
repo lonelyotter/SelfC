@@ -2,12 +2,9 @@ import os.path as osp
 import logging
 import time
 import argparse
-from collections import OrderedDict
 import os
-import numpy as np
 import options.options as option
 import utils.util as util
-# import utils.calculate_PSNR_SSIM as Metric_Calculator
 from data.util import rgb_to_ycbcr
 from data import create_dataset, create_dataloader
 from models import create_model
@@ -57,17 +54,6 @@ ave_ssimy_all_ds = []
 ave_psnry_lr_all_ds = []
 ave_ssimy_lr_all_ds = []
 
-
-def tensor_to_number(xs):
-    l = []
-    for i in xs:
-        if type(i) == int or type(i) == float:
-            l += [i]
-        else:
-            l += [i.item()]
-    return l
-
-
 img_ext = ".jpg"
 
 
@@ -99,17 +85,17 @@ def cal_metric(val_loader, val_ds_name, model, opt, dataset_dir):
     avg_ssim_y = []
     avg_lr_ssim = []
     avg_lr_ssim_y = []
-    
+
     idx = 0
     meta_metric_info = {}
-    
+
     for val_data in val_loader:
         idx += 1
 
         print("testing progress {}/{}".format(idx * val_loader.batch_size,
                                               len(val_loader.dataset)))
-        clip_length = model.feed_data(val_data)
-
+        
+        model.feed_data(val_data)
         model.test()
 
         visuals = model.get_current_visuals()
@@ -147,9 +133,11 @@ def cal_metric(val_loader, val_ds_name, model, opt, dataset_dir):
         avg_lr_psnr_y += [avg_list(batch_lr_psnr)]
         avg_lr_ssim_y += [avg_list(util.calculate_ssim(lr_y, lrgt_y))]
         video_name_list = val_data['LQ_path']
+
         for b_i in range(b):
             video_name = os.path.splitext("_".join(
                 video_name_list[b_i].split("/")[-3:]))[0]
+            
             for t_i in range(video_len):
                 sr_1im = sr_img_vis[b_i, t_i]
                 gt_1im = gt_img_vis[b_i, t_i]
@@ -171,6 +159,7 @@ def cal_metric(val_loader, val_ds_name, model, opt, dataset_dir):
                                   frame_path + "_lrgt" + img_ext)
 
                 meta_metric_info[frame_path] = [sr_psnr, lr_psnr]
+
     avg_psnr = avg_list(avg_psnr)
     avg_psnr_y = avg_list(avg_psnr_y)
     avg_lr_psnr = avg_list(avg_lr_psnr)
@@ -180,6 +169,7 @@ def cal_metric(val_loader, val_ds_name, model, opt, dataset_dir):
     avg_ssim_y = avg_list(avg_ssim_y)
     avg_lr_ssim = avg_list(avg_lr_ssim)
     avg_lr_ssim_y = avg_list(avg_lr_ssim_y)
+    
     with open(dataset_dir + "meta_info.pkl", 'wb') as f:
         pickle.dump(meta_metric_info, f)
     return avg_psnr, avg_psnr_y, avg_lr_psnr, avg_lr_psnr_y, avg_ssim, avg_ssim_y, avg_lr_ssim, avg_lr_ssim_y
@@ -199,19 +189,17 @@ test_results['ssim_y_lr'] = []
 for test_loader in test_loaders:
     test_set_name = test_loader.dataset.opt['name']
     logger.info('\nTesting [{:s}]...'.format(test_set_name))
-    test_start_time = time.time()
     dataset_dir = osp.join(opt['path']['results_root'], test_set_name)
     util.mkdir(dataset_dir)
 
-    avg_psnr,avg_psnr_y,avg_lr_psnr,avg_lr_psnr_y,\
-    avg_ssim,avg_ssim_y,avg_lr_ssim,avg_lr_ssim_y,\
-    = \
-    cal_metric(test_loader,test_set_name,model,opt,dataset_dir)
+    avg_psnr, avg_psnr_y, avg_lr_psnr, avg_lr_psnr_y, avg_ssim, avg_ssim_y, avg_lr_ssim, avg_lr_ssim_y, = cal_metric(
+        test_loader, test_set_name, model, opt, dataset_dir)
+
     logger.info(" HR results for {}, PSNR {:.6f}dB, SSIM {:.6f}".format(
         test_set_name, (avg_psnr_y), (avg_ssim_y)))
     logger.info(" LR results for {}, PSNR {:.6f}dB, SSIM {:.6f}".format(
         test_set_name, (avg_lr_psnr_y), (avg_lr_ssim_y)))
-    
+
     test_results['psnr'] += [avg_psnr]
     test_results['ssim'] += [avg_ssim]
     test_results['psnr_y'] += [avg_psnr_y]
@@ -222,10 +210,12 @@ for test_loader in test_loaders:
     test_results['psnr_y_lr'] += [avg_lr_psnr_y]
     test_results['ssim_y_lr'] += [avg_lr_ssim_y]
 
+# log HR results
 logger.info(
     "Averaged HR results for all datasets, PSNR {:.6f}dB, SSIM {:.6f}".format(
         avg_list(test_results['psnr_y']), avg_list(test_results['ssim_y'])))
 
+# log LR results
 logger.info(
     "Averaged LR results for all datasets, PSNR {:.6f}dB, SSIM {:.6f}".format(
         avg_list(test_results['psnr_y_lr']),

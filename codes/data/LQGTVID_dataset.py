@@ -97,38 +97,11 @@ class LQGTVIDDataset(data.Dataset):
         '''
         resolution = None
 
-        # modcrop in the validation / test phase
-        # if self.opt['phase'] == 'train':
-        #     img_GT = util.read_img1(None, GT_path, resolution)
-        #     img_GT = util.modcrop(img_GT, 128)
-        #     img_GT = util.channel_convert(img_GT.shape[2], self.opt['color'], [img_GT])[0]
-        # else:
-        #     img_GT = util.read_img(None, GT_path, resolution)
         # change color space if necessary
         img_GT = util.read_img1(None, GT_path, resolution)
-        # img_GT = util.modcrop(img_GT, 4)
         img_GT = util.channel_convert(img_GT.shape[2], self.opt['color'],
                                       [img_GT])[0]
 
-        # # randomly scale during training
-        # if self.opt['phase'] == 'train':
-        #     random_scale = self.random_scale
-        #     H_s, W_s, _ = img_GT.shape
-
-        #     def _mod(n, random_scale, scale, thres):
-        #         rlt = int(n * random_scale)
-        #         rlt = (rlt // scale) * scale
-        #         return thres if rlt < thres else rlt
-
-        #     H_s = _mod(H_s, random_scale, scale, GT_size)
-        #     W_s = _mod(W_s, random_scale, scale, GT_size)
-        #     img_GT = cv2.resize(np.copy(img_GT), (W_s, H_s), interpolation=cv2.INTER_LINEAR)
-
-        _, H, W = img_GT.shape # useless
-        # using matlab imresize
-        # img_LQ = util.imresize_np(img_GT, 1 / scale, True)
-        # if img_LQ.ndim == 2:
-        #     img_LQ = np.expand_dims(img_LQ, axis=2)
 
         if self.opt['phase'] == 'train':
             # if the image size is too small

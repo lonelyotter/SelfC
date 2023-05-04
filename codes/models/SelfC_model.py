@@ -84,6 +84,7 @@ class SelfCModel(BaseModel):
                             weights=train_opt['restart_weights'],
                             gamma=train_opt['lr_gamma'],
                             clear_state=train_opt['clear_state']))
+                    
             elif train_opt['lr_scheme'] == 'CosineAnnealingLR_Restart':
                 for optimizer in self.optimizers:
                     self.schedulers.append(
@@ -93,6 +94,7 @@ class SelfCModel(BaseModel):
                             eta_min=train_opt['eta_min'],
                             restarts=train_opt['restarts'],
                             weights=train_opt['restart_weights']))
+                    
             else:
                 raise NotImplementedError(
                     'MultiStepLR learning rate scheme is enough.')
@@ -112,28 +114,20 @@ class SelfCModel(BaseModel):
         # size: batch_size, C, T, H, W
         self.real_H = data['GT']  # GT
 
-        ##### if T < video_len, pad T to video_len
+        # if T < video_len, pad T to video_len by copying the last frame
         video_clip_len_train = GlobalVar.get_Temporal_LEN()
-        # if (self.real_H.size(2) < video_clip_len_train):
-        #     pad_num = video_clip_len_train  - self.real_H.size(2)
-        #     pad_t = torch.zeros((_1,_2,pad_num,_4,_5))
-        #     self.real_H = torch.cat([self.real_H,pad_t],dim=2)
         clip_length = self.real_H.size(2)
         if (clip_length < video_clip_len_train):
             pad_num = video_clip_len_train - clip_length
             pads = []
-            for i in range(pad_num):
+            for _ in range(pad_num):
                 pads += [self.real_H[:, :, -1, :, :]]
             pads = torch.stack(pads, dim=2)
             self.real_H = torch.cat([self.real_H, pads], dim=2)
-        #####
 
-        # if "LQ" in data:
-        #     self.ref_L = data['LQ']  # GT
+        # if in train mode, load reference LR video to GPU
         if self.opt['train']:
             self.real_H = self.real_H.to(self.device)
-        #     if "LQ" in data:
-        #         self.ref_L = self.ref_L.to(self.device)
 
         # size: batch_size * t, 3, h, w
         self.real_H = self.real_H.transpose(1,
@@ -141,15 +135,11 @@ class SelfCModel(BaseModel):
                                                        self.real_H.size(3),
                                                        self.real_H.size(4))
 
-        # img = util.tensor2img(self.real_H)
-        # util.save_img(img, "tmp.jpg")
-        # time.sleep(5000)
-        # exit()
-
-        if "LQ" in data:
+        if "LQ" in data: # low resolution video is provided
             self.ref_L = self.ref_L.transpose(1, 2).reshape(
                 -1, 3, self.ref_L.size(3), self.ref_L.size(4))
-        else:
+            
+        else: # low resolution video is not provided
             if self.opt["distortion"] == "pytorch_bicubic":
                 self.ref_L = F.upsample(self.real_H,
                                         scale_factor=(1 / self.opt['scale'],
@@ -225,20 +215,21 @@ class SelfCModel(BaseModel):
         '''
         test the model
         '''
-        self.input = self.real_H
-
+        self.input = self.real_H # size: bt, c, h, w
         self.netG.eval()
+
         with torch.no_grad():
-            import time
-            T1 = time.time()
             bt, c, h, w = self.real_H.shape
             t = 7
             b = bt // t
             self.real_H = self.real_H.reshape(b, t, c, h, w)
             self.gop = 7
-            n_gop = t // self.gop
+            n_gop = t // self.gop # 1
             forw_L = []
             fake_H = []
+
+            # TODO: maybe need to rewrite this part
+            
             for i in range(n_gop + 1):
                 if i == n_gop:
                     # calculate indices to pad last frame
@@ -249,31 +240,25 @@ class SelfCModel(BaseModel):
                 else:
                     self.input = self.real_H[:,
                                              i * self.gop:(i + 1) * self.gop]
+                    
                 _b, _t, _c, _h, _w = self.input.shape
                 self.forw_L, _ = self.netG(
                     x=self.input.reshape(_b * _t, _c, _h, _w))
-                T2 = time.time()
-                # print('down time %s ms' % ((T2 - T1)*1000))
 
+                # high frequent component, discarded
                 self.forw_H = self.forw_L[:, 3:, :, :]
+                # low frequent component, also the generated low resolution video
                 self.forw_L = self.forw_L[:, :3, :, :]
 
-                # print(self.forw_L .size())
-                # exit()
+                # quantify the low resolution video to 256 levels in [0, 1]
                 self.forw_L = self.Quantization(self.forw_L)
+
                 y = self.forw_L
-                T1 = time.time()
-                # flops, params = profile(self.netG.module, inputs=(y, True))
-                # flops, params = clever_format([flops, params], "%.3f")
-                # print("SELFC flops,params",flops,params)
-                # time.sleep(2)
-                # exit()
                 x_samples, self.sample_H = self.netG(x=y, rev=True)
-                T2 = time.time()
-                # print('up time %s ms' % ((T2 - T1)*1000))
                 self.fake_H = x_samples[:, :3, :, :]
                 self.forw_L = self.forw_L.reshape(b, _t, c, h // 4, w // 4)
                 self.fake_H = self.fake_H.reshape(b, _t, c, h, w)
+
                 if i == n_gop:
                     for j in range(t % self.gop):
                         forw_L.append(self.forw_L[:, j])
@@ -282,12 +267,14 @@ class SelfCModel(BaseModel):
                     for j in range(self.gop):
                         forw_L.append(self.forw_L[:, j])
                         fake_H.append(self.fake_H[:, j])
+
         self.fake_H = torch.stack(fake_H, dim=1)
         self.forw_L = torch.stack(forw_L, dim=1)
         b, t, c, h, w = self.fake_H.size()
         self.fake_H = self.fake_H.reshape(b * t, c, h, w)
         b, t, c, h, w = self.forw_L.size()
         self.forw_L = self.forw_L.reshape(b * t, c, h, w)
+
         self.netG.train()
 
     def downscale(self, HR_img):
@@ -327,19 +314,15 @@ class SelfCModel(BaseModel):
         real_h = self.real_H
 
         b, t, c, h, w = real_h.size()
+
         real_h = real_h.reshape(b * t, c, h, w)
-        sample_h = self.sample_H
         forw_H = self.forw_H
         forw_H = ((forw_H[:, :]))
 
         out_dict['SR'] = fake_h.detach()
         out_dict['LR_ref'] = ref_l.detach()
         out_dict['LR'] = forw_l.detach()
-
-        # out_dict['LR_diff'] = (forw_l.cpu()-ref_l.cpu()).detach()
-        # out_dict['HR_diff'] = (real_h.cpu()-F.upsample(forw_l,scale_factor=(4,4)).cpu()).detach()
         out_dict['GT'] = real_h.detach()
-        # out_dict['sample_h'] = sample_h.detach()
         out_dict['forw_H'] = forw_H.detach()
         return out_dict
 
