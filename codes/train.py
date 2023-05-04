@@ -57,14 +57,15 @@ def cal_metric(val_loader, val_ds_name, model, opt, current_step):
         lr_img = (visuals['LR'])
         lrgt_img = (visuals['LR_ref'])
 
-        # # Save SR images for reference
-        # save_img_path = os.path.join(img_dir,
-        #                                 '{:s}_{:d}_clip{:d}.png'.format(img_name, current_step,idx))
-        # util.save_img(util.tensor2img(visuals['SR']), save_img_path)
+        if opt["save_image"]:
+            # Save SR images for reference
+            save_img_path = os.path.join(img_dir,
+                                            '{:s}_{:d}_clip{:d}.png'.format(img_name, current_step,idx))
+            util.save_img(util.tensor2img(visuals['SR']), save_img_path)
 
-        # # Save LR images
-        # save_img_path_L = os.path.join(img_dir, '{:s}_forwLR_{:d}_clip{:d}.png'.format(img_name, current_step,idx))
-        # util.save_img(util.tensor2img(visuals['LR']), save_img_path_L)
+            # Save LR images
+            save_img_path_L = os.path.join(img_dir, '{:s}_forwLR_{:d}_clip{:d}.png'.format(img_name, current_step,idx))
+            util.save_img(util.tensor2img(visuals['LR']), save_img_path_L)
 
         # calculate PSNR
         avg_psnr += util.calculate_psnr(sr_img, gt_img)

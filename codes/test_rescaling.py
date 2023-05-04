@@ -133,10 +133,11 @@ def cal_metric(val_loader,val_ds_name,model,opt,dataset_dir):
 				lr_psnr = batch_lr_psnr[b_i*video_len + t_i]
 				frame_path = os.path.join(dataset_dir,video_name+"_{}th".format(t_i))
 				# print(frame_path)
-				util.save_img(util.tensor2img(sr_1im), frame_path+"_sr"+img_ext)
-				util.save_img(util.tensor2img(gt_1im), frame_path+"_gt"+img_ext)
-				util.save_img(util.tensor2img(lr_1im), frame_path+"_lr"+img_ext)
-				util.save_img(util.tensor2img(lrgt_1im), frame_path+"_lrgt"+img_ext)
+				if opt["save_img"]:
+					util.save_img(util.tensor2img(sr_1im), frame_path+"_sr"+img_ext)
+					util.save_img(util.tensor2img(gt_1im), frame_path+"_gt"+img_ext)
+					util.save_img(util.tensor2img(lr_1im), frame_path+"_lr"+img_ext)
+					util.save_img(util.tensor2img(lrgt_1im), frame_path+"_lrgt"+img_ext)
 
 				meta_metric_info[frame_path] = [sr_psnr,lr_psnr]
 	avg_psnr = avg_list(avg_psnr)

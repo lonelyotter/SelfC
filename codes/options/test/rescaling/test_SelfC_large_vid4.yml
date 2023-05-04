@@ -8,6 +8,7 @@ scale: 4
 crop_border: ~  # crop border when evaluation. If None(~), crop the scale pixels
 gpu_ids: [0]
 
+save_image: True # whether to save test image results
 
 datasets:
   test_1:  # the 1st test dataset
@@ -60,5 +61,5 @@ network_G:
 
 #### path
 path:
-  pretrain_model_G: ../pretrained_models/selfc_large_pretrain.pth
+  pretrain_model_G: ../pretrained_models/my_selfc_large_psnr_31.70.pth
   strict_load: True

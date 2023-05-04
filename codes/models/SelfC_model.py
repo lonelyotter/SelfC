@@ -222,6 +222,9 @@ class SelfCModel(BaseModel):
         self.log_dict['loss'] = loss.item()
 
     def test(self):
+        '''
+        test the model
+        '''
         self.input = self.real_H
 
         self.netG.eval()

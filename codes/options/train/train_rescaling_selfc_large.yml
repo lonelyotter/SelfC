@@ -99,6 +99,7 @@ train:
   niter: 400000
   warmup_iter: -1  # no warm up
 
+  # decay to half every 100k iterations
   lr_scheme: MultiStepLR
   lr_steps: [100000, 200000,300000]
   lr_gamma: 0.5
