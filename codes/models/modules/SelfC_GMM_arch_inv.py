@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-# TEMP_LEN = 5
 
 
 class InvBlockExp(nn.Module):
@@ -12,24 +11,36 @@ class InvBlockExp(nn.Module):
                  clamp=1.):
         super(InvBlockExp, self).__init__()
 
-        self.split_len1 = channel_split_num
-        self.split_len2 = channel_num - channel_split_num
+        self.split_len1 = channel_split_num # 3
+        self.split_len2 = channel_num - channel_split_num # 48
 
         self.clamp = clamp
 
+        # F: input channel: 48, output channel: 3
         self.F = subnet_constructor(self.split_len2, self.split_len1)
+        # G: input channel: 3, output channel: 48
         self.G = subnet_constructor(self.split_len1, self.split_len2)
+        # H: input channel: 3, output channel: 48
         self.H = subnet_constructor(self.split_len1, self.split_len2)
 
     def forward(self, x, rev=False):
+        # input size : (bt, C + C*k^2, H/k, W/k)
+        # x1 is the first 3 channels
+        # x2 is the rest of the channels
         x1, x2 = (x.narrow(1, 0, self.split_len1),
                   x.narrow(1, self.split_len1, self.split_len2))
 
         if not rev:
+            # forward
+            # y1 size: (bt, 3, H/k, W/k)
             y1 = x1 + self.F(x2)
+            # s size: (bt, 48, H/k, W/k)
             self.s = self.clamp * (torch.sigmoid(self.H(y1)) * 2 - 1)
+            # y2 size: (bt, 48, H/k, W/k)
             y2 = x2.mul(torch.exp(self.s)) + self.G(y1)
         else:
+            # backward
+            # reverse calculation of forward
             self.s = self.clamp * (torch.sigmoid(self.H(x1)) * 2 - 1)
             y2 = (x2 - self.G(x1)).div(torch.exp(self.s))
             y1 = x1 - self.F(y2)
@@ -45,27 +56,34 @@ class InvBlockExp(nn.Module):
         return jac / x.shape[0]
 
 
-import torch.nn as nn
-
-
 class PixelUnshuffle(nn.Module):
+    '''
+    PixelUnshuffle is the reverse operation of PixelShuffle.
+    It receive a tensor with shape (N, C, H, W) as input,
+    and return a tensor with shape (N, C*r^2, H//r, W//r) as output.
+    '''
     def __init__(self, scale=4):
         super().__init__()
         self.scale = scale
 
     def forward(self, x):
         N, C, H, W = x.size()
-        S = self.scale
-        # (N, C, H//bs, bs, W//bs, bs)
-        x = x.view(N, C, H // S, S, W // S, S)
-        # (N, bs, bs, C, H//bs, W//bs)
+        R = self.scale
+        # (N, C, H//r, r, W//r, r)
+        x = x.view(N, C, H // R, R, W // R, R)
+        # (N, r, r, C, H//r, W//r)
         x = x.permute(0, 3, 5, 1, 2, 4).contiguous()
-        # (N, C*bs^2, H//bs, W//bs)
-        x = x.view(N, C * S * S, H // S, W // S)
+        # (N, C*r^2, H//r, W//r)
+        x = x.view(N, C * R * R, H // R, W // R)
         return x
 
 
 class FrequencyAnalyzer(nn.Module):
+    '''
+    FrequencyAnalyzer is the non-trainable module of the Analyzer.
+    It receive a tensor with shape (bt, C, H, W) as input,
+    and return a tensor with shape (bt, C + C*k^2, H/k, W/k) as output.
+    '''
     def __init__(self, channel_in):
         super(FrequencyAnalyzer, self).__init__()
         k = 4
@@ -77,15 +95,22 @@ class FrequencyAnalyzer(nn.Module):
         self.pixel_shuffle = nn.PixelShuffle(k)
 
     def forward(self, x, rev=False):
-        #### forward
-        if not rev:
+        if not rev: # forward analyzer
+            # input x size: (bt, C, H, W)
+            # low frequency component size: (bt, C, H/k, W/k)
             component_low_f = self.bicubic_down(x)
+            # high frequency component size: (bt, C*k^2, H/k, W/k)
             component_high_f = self.pixel_unshuffle(
                 x - self.bicubic_up(component_low_f))
+            # output size: (bt, C + C*k^2, H/k, W/k)
             return torch.cat((component_low_f, component_high_f), dim=1)
-        else:
+        else: # backward synthesizer
+            # input x size: (bt, C + C*k^2, H/k, W/k)
+            # low frequency component size: (bt, C, H/k, W/k)
             component_low_f = x[:, 0:3]
+            # high frequency component size: (bt, C*k^2, H/k, W/k)
             component_high_f = x[:, 3:]
+            # output size: (bt, C, H, W)
             return self.bicubic_up(component_low_f) + self.pixel_shuffle(
                 component_high_f)
 
@@ -477,13 +502,17 @@ class SelfCInvNet(nn.Module):
         subnet_constructor = subnet(subnet_type, "xavier")
         b = FrequencyAnalyzer(current_channel)
         operations.append(b)
+
+        # after concat, the channel is 17 times of the input channel
+        # include 3 low frequency channels, 48 high frequency channels.
         current_channel *= 17
-        for i in range(down_num):
+        for i in range(down_num): # down_num usually is 2
             for j in range(block_num[i]):
                 b = InvBlockExp(subnet_constructor, current_channel,
                                 channel_out)
                 operations.append(b)
 
+        # operations are the Analyzer/Synthesizer. It includes an FrequencyAnalyzer and several InvBlockExp.
         self.operations = nn.ModuleList(operations)
 
         self.stp_net = STPNet(opt)
@@ -493,6 +522,7 @@ class SelfCInvNet(nn.Module):
         jacobian = 0
 
         if not rev:  # forward
+            # input size: bt, c, h, w
             for op in self.operations:
                 out = op.forward(out, rev)
                 if cal_jacobian:
@@ -508,8 +538,8 @@ class SelfCInvNet(nn.Module):
             # loss_c = self.stp_net.neg_llh(hf)
             loss_c = out.mean() * 0
             return out, loss_c
-        
-        else: # backward
+
+        else:  # backward
             bt, c, h, w = out.size()
             t = GlobalVar.get_Temporal_LEN()
 
@@ -530,5 +560,6 @@ class SelfCInvNet(nn.Module):
                 if cal_jacobian:
                     jacobian += op.jacobian(out, rev)
             return out, recon_hf.transpose(1, 2).reshape(b * t, -1, h, w)
+
 
 from models.modules.Subnet_constructor import subnet

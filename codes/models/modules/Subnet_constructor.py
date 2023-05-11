@@ -62,39 +62,6 @@ class DenseBlockVideoInput(nn.Module):
             return x5
 
 
-# class D2DTInput(nn.Module):
-#     def __init__(self, channel_in, channel_out, init='xavier', gc=32, bias=True):
-#         super(D2DTInput, self).__init__()
-#         self.conv1 = nn.Conv3d(channel_in, gc, (3,3,3), 1, (0,1,1), bias=bias)
-#         self.conv2 = nn.Conv3d(channel_in + gc, gc, (1,3,3), 1, (0,1,1), bias=bias)
-#         self.conv3 = nn.Conv3d(channel_in + 2 * gc, gc, (1,3,3), 1, (0,1,1), bias=bias)
-#         self.conv4 = nn.Conv3d(channel_in + 3 * gc, gc, (1,3,3), 1, (0,1,1), bias=bias)
-#         self.conv5 = nn.Conv3d(channel_in + 4 * gc, channel_out, (3,3,3), 1, (1,0,0), bias=bias)
-#         self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
-
-#         if init == 'xavier':
-#             mutil.initialize_weights_xavier([self.conv1, self.conv2, self.conv3, self.conv4], 0.1)
-#         else:
-#             mutil.initialize_weights([self.conv1, self.conv2, self.conv3, self.conv4], 0.1)
-#         mutil.initialize_weights(self.conv5, 0)
-
-#     def forward(self, x,io_type="2d"):
-#         if io_type == "2d":
-#             bt,c,w,h = x.size()
-#             t = GlobalVar.get_Temporal_LEN()
-#             b = bt//t
-#             x  = x.reshape(b,t,c,w,h).transpose(1,2)
-#         x1 = self.lrelu(self.conv1(x))
-#         x2 = self.lrelu(self.conv2(torch.cat((x, x1), 1)))
-#         x3 = self.lrelu(self.conv3(torch.cat((x, x1, x2), 1)))
-#         x4 = self.lrelu(self.conv4(torch.cat((x, x1, x2, x3), 1)))
-#         x5 = self.conv5(torch.cat((x, x1, x2, x3, x4), 1))
-#         if io_type == "2d":
-#             x5 = x5.transpose(1,2).reshape(bt,-1,w,h)
-#         return x5
-
-
-
 class D2DTInput(nn.Module):
     def __init__(self, channel_in, channel_out, init='xavier',\
          gc=32, bias=True,INN_init = True,is_res = False):
@@ -117,10 +84,9 @@ class D2DTInput(nn.Module):
             io_type = "2d"
         if io_type == "2d":
             bt,c,w,h = x.size()
-            # print(x.size())
             t = GlobalVar.get_Temporal_LEN()
-            # t = 5
             b = bt//t
+            # change channel dim to dim 2, in order to use conv3d
             x  = x.reshape(b,t,c,w,h).transpose(1,2)
         
         x1 = self.lrelu(self.conv1(x))
@@ -257,26 +223,6 @@ class SpaceToDepth(nn.Module):
 
     def extra_repr(self):
         return f"block_size={self.block_size}"
-
-# import torch.nn as nn
-# nn.PixelShuffle(scale)
-
-# class PixelUnshuffle(nn.Module):
-#     def __init__(self, scale=4):
-#         super().__init__()
-#         self.scale = scale
-
-#     def forward(self, x):
-#         N, C, H, W = x.size()
-#         S = self.scale
-#         # (N, C, H//bs, bs, W//bs, bs)
-#         x = x.view(N, C, H // S, S, W // S, S)  
-#         # (N, bs, bs, C, H//bs, W//bs)
-#         x = x.permute(0, 3, 5, 1, 2, 4).contiguous()  
-#         # (N, C*bs^2, H//bs, W//bs)
-#         x = x.view(N, C * S * S, H // S, W // S)  
-#         return x
-
 
 
 class FeatureCalapseBlock(nn.Module):

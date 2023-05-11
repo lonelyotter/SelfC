@@ -84,7 +84,7 @@ class SelfCModel(BaseModel):
                             weights=train_opt['restart_weights'],
                             gamma=train_opt['lr_gamma'],
                             clear_state=train_opt['clear_state']))
-                    
+
             elif train_opt['lr_scheme'] == 'CosineAnnealingLR_Restart':
                 for optimizer in self.optimizers:
                     self.schedulers.append(
@@ -94,7 +94,7 @@ class SelfCModel(BaseModel):
                             eta_min=train_opt['eta_min'],
                             restarts=train_opt['restarts'],
                             weights=train_opt['restart_weights']))
-                    
+
             else:
                 raise NotImplementedError(
                     'MultiStepLR learning rate scheme is enough.')
@@ -135,11 +135,11 @@ class SelfCModel(BaseModel):
                                                        self.real_H.size(3),
                                                        self.real_H.size(4))
 
-        if "LQ" in data: # low resolution video is provided
+        if "LQ" in data:  # low resolution video is provided
             self.ref_L = self.ref_L.transpose(1, 2).reshape(
                 -1, 3, self.ref_L.size(3), self.ref_L.size(4))
-            
-        else: # low resolution video is not provided
+
+        else:  # low resolution video is not provided
             if self.opt["distortion"] == "pytorch_bicubic":
                 self.ref_L = F.upsample(self.real_H,
                                         scale_factor=(1 / self.opt['scale'],
@@ -215,7 +215,7 @@ class SelfCModel(BaseModel):
         '''
         test the model
         '''
-        self.input = self.real_H # size: bt, c, h, w
+        self.input = self.real_H  # size: bt, c, h, w
         self.netG.eval()
 
         with torch.no_grad():
@@ -224,12 +224,12 @@ class SelfCModel(BaseModel):
             b = bt // t
             self.real_H = self.real_H.reshape(b, t, c, h, w)
             self.gop = 7
-            n_gop = t // self.gop # 1
+            n_gop = t // self.gop  # 1
             forw_L = []
             fake_H = []
 
             # TODO: maybe need to rewrite this part
-            
+
             for i in range(n_gop + 1):
                 if i == n_gop:
                     # calculate indices to pad last frame
@@ -240,7 +240,7 @@ class SelfCModel(BaseModel):
                 else:
                     self.input = self.real_H[:,
                                              i * self.gop:(i + 1) * self.gop]
-                    
+
                 _b, _t, _c, _h, _w = self.input.shape
                 self.forw_L, _ = self.netG(
                     x=self.input.reshape(_b * _t, _c, _h, _w))
@@ -253,6 +253,7 @@ class SelfCModel(BaseModel):
                 # quantify the low resolution video to 256 levels in [0, 1]
                 self.forw_L = self.Quantization(self.forw_L)
 
+                # backward
                 y = self.forw_L
                 x_samples, self.sample_H = self.netG(x=y, rev=True)
                 self.fake_H = x_samples[:, :3, :, :]
@@ -303,6 +304,13 @@ class SelfCModel(BaseModel):
         return self.log_dict
 
     def get_current_visuals(self):
+        '''
+        return the tensors of ground truth, reference low resolution, 
+        generated low resolution, super resolution and forward high component
+
+        Returns:
+            out_dict (OrderedDict): the output dictionary of the above tensors
+        '''
         out_dict = OrderedDict()
 
         ref_l = self.ref_L
