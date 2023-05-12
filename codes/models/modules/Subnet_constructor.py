@@ -87,6 +87,7 @@ class D2DTInput(nn.Module):
             t = GlobalVar.get_Temporal_LEN()
             b = bt//t
             # change channel dim to dim 2, in order to use conv3d
+            # size (b, c, t, w, h)
             x  = x.reshape(b,t,c,w,h).transpose(1,2)
         
         x1 = self.lrelu(self.conv1(x))
@@ -96,6 +97,7 @@ class D2DTInput(nn.Module):
         x5 = self.conv5(torch.cat((x, x1, x2, x3, x4), 1))
         if io_type == "2d":
             x5 = x5.transpose(1,2).reshape(bt,-1,w,h)
+        # size: (bt, channel_out, w, h)
         return x5
 
         

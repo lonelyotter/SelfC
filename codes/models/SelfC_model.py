@@ -251,9 +251,11 @@ class SelfCModel(BaseModel):
                 self.forw_L = self.forw_L[:, :3, :, :]
 
                 # quantify the low resolution video to 256 levels in [0, 1]
+                # forw_L size: (bt, 3, h/k, w/k)
                 self.forw_L = self.Quantization(self.forw_L)
 
                 # backward
+                # y size: (bt, 3, h/k, w/k)
                 y = self.forw_L
                 x_samples, self.sample_H = self.netG(x=y, rev=True)
                 self.fake_H = x_samples[:, :3, :, :]

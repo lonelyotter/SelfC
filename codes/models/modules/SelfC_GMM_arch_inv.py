@@ -11,8 +11,8 @@ class InvBlockExp(nn.Module):
                  clamp=1.):
         super(InvBlockExp, self).__init__()
 
-        self.split_len1 = channel_split_num # 3
-        self.split_len2 = channel_num - channel_split_num # 48
+        self.split_len1 = channel_split_num  # 3
+        self.split_len2 = channel_num - channel_split_num  # 48
 
         self.clamp = clamp
 
@@ -95,7 +95,7 @@ class FrequencyAnalyzer(nn.Module):
         self.pixel_shuffle = nn.PixelShuffle(k)
 
     def forward(self, x, rev=False):
-        if not rev: # forward analyzer
+        if not rev:  # forward analyzer
             # input x size: (bt, C, H, W)
             # low frequency component size: (bt, C, H/k, W/k)
             component_low_f = self.bicubic_down(x)
@@ -104,7 +104,7 @@ class FrequencyAnalyzer(nn.Module):
                 x - self.bicubic_up(component_low_f))
             # output size: (bt, C + C*k^2, H/k, W/k)
             return torch.cat((component_low_f, component_high_f), dim=1)
-        else: # backward synthesizer
+        else:  # backward synthesizer
             # input x size: (bt, C + C*k^2, H/k, W/k)
             # low frequency component size: (bt, C, H/k, W/k)
             component_low_f = x[:, 0:3]
@@ -305,29 +305,43 @@ class GlobalAgg(nn.Module):
         self.proj3 = nn.Linear(c, c)
 
     def forward(self, x):
+        # x size: (bt, 64, W, W)
         ### 64 w h
+
+        # size: (bt, 64, H, W)
         x_proj1 = self.proj1(x)
         TEMP_LEN = GlobalVar.get_Temporal_LEN()
         B, C, H, W = x.size()
+        # size: (bt, 64, 32, 32)
         x_down_sample = F.adaptive_avg_pool2d(x, output_size=(32, 32))
+        # size: (bt, 64, 32 * 32)
         x_down_sample = x_down_sample.reshape(B, C, 32 * 32)
+        # size: (bt, 64)
         x_down_sample = self.fc(x_down_sample).squeeze()
+        # size: (b, t, 64)
         x_down_sample_video = x_down_sample.reshape(B // TEMP_LEN, TEMP_LEN, C)
+        # size: (b, t, 64)
         x_down_sample_video_proj2 = self.proj2(x_down_sample_video)
+        # size: (b, t, 64)
         x_down_sample_video_proj3 = self.proj3(x_down_sample_video)
+        # size: (b, t, t)
         temporal_weight_matrix = torch.matmul(
             x_down_sample_video_proj2,
             x_down_sample_video_proj3.transpose(1, 2))
         #### T * T
         temporal_weight_matrix = F.softmax(temporal_weight_matrix / C, dim=-1)
 
+        # size: (b, t, 64, H, W)
         x_proj1 = x_proj1.reshape(B // TEMP_LEN, TEMP_LEN, C, H, W)
+        # size: (b, 64*H*W, t)
         x_proj1 = x_proj1.permute(0, 2, 3, 4,
                                   1).reshape(B // TEMP_LEN, C * H * W,
                                              TEMP_LEN)
+        # size: (b, 64*H*W, t)
         weighted_feature = torch.matmul(x_proj1,
                                         temporal_weight_matrix)  ## b (chw) t
 
+        # size: (bt, 64, H, W)
         return x + weighted_feature.reshape(B//TEMP_LEN,C,H,W,TEMP_LEN).\
             permute(0,4,1,2,3).reshape(B,C,H,W)
 
@@ -336,19 +350,18 @@ class STPNet(nn.Module):
     def __init__(self, opt):
         super(STPNet, self).__init__()
 
-        self.global_module = opt["global_module"]
-        self.stp_blk_num = opt["stp_blk_num"]
-        self.fh_loss = opt["fh_loss"]
-        self.scale = opt["scale"]
-        self.K = opt["gmm_k"]
-        self.stp_blk_num = self.stp_blk_num - 2
+        self.global_module = opt["global_module"]  # nonlocal
+        self.stp_blk_num = opt["stp_blk_num"]  # 6
+        self.fh_loss = opt["fh_loss"]  # gmm
+        self.scale = opt["scale"]  # 4
+        self.K = opt["gmm_k"]  # 5
+        self.stp_blk_num = self.stp_blk_num - 2  # 4
 
         c = 64
-        # inner_c = 32
         self.local_m1 = D2DTInput(3, c, INN_init=False)
         self.local_m2 = D2DTInput(c, c, INN_init=False)
 
-        if self.global_module == 'nonlocal':
+        if self.global_module == 'nonlocal':  # our method
             self.global_m1 = GlobalAgg(c)
             self.global_m2 = GlobalAgg(c)
         if self.global_module == 'deform':
@@ -369,7 +382,7 @@ class STPNet(nn.Module):
 
         self.other_stp_modules = nn.Sequential(*self.other_stp_modules)
 
-        self.hf_dim = 3 * (self.scale**2)
+        self.hf_dim = 3 * (self.scale**2)  # 48
 
         if self.fh_loss == "l2":
             self.tail_gmm = [
@@ -378,7 +391,7 @@ class STPNet(nn.Module):
             ]
             self.tail_gmm = nn.Sequential(*self.tail_gmm)
         elif self.fh_loss == "gmm":
-            MLP_dim = c
+            MLP_dim = c  # 64
             self.tail_gmm = [
                 nn.LeakyReLU(negative_slope=0.2, inplace=True),
                 nn.Conv3d(c, MLP_dim * 2, 1, 1, 0, bias=True),
@@ -418,8 +431,12 @@ class STPNet(nn.Module):
         self.h = h
         self.w = w
         b, c, t, h, w = x.size()
+        # x size: (b, t, c, h, w)
         x = x.transpose(1, 2)
+        # x size: (bt, c, h, w)
         x = x.reshape(b * t, c, h, w)
+
+        # temp size: (bt, 64, h, w)
         temp = self.local_m1(x)
         if self.global_module:
             temp = self.global_m1(temp)
@@ -430,7 +447,9 @@ class STPNet(nn.Module):
         bt, c, w, h = temp.size()
         t = GlobalVar.get_Temporal_LEN()
         b = bt // t
+        # size: (b, c, t, h, w)
         temp = temp.reshape(b, t, c, w, h).transpose(1, 2)
+        # size: (b, 720, t, h, w)
         self.parameters = self.tail_gmm(temp)
         if self.fh_loss == "l2":
             return
@@ -438,17 +457,25 @@ class STPNet(nn.Module):
         out_param = self.parameters
 
         b, c, t, h, w = out_param.size()
+        # size: (b, 48, 5, 3, t, h, w)
         out_param = out_param.reshape(b, self.hf_dim, self.K, 3, t, h, w)
+        # weight size: (b, 48, 5, t, h, w)
         pi = F.softmax(out_param[:, :, :, 0], dim=1)
+        # log_scale size: (b, 48, 5, t, h, w)
         log_scale = torch.clamp(out_param[:, :, :, 1], -7, 7)
+        # mean size: (b, 48, 5, t, h, w)
         mean = out_param[:, :, :, 2]
 
+        # v size: (b, 48, 5, t, h, w)
         v = pi[:, :, :] * self.reparametrize(mean[:, :, :],
                                              log_scale[:, :, :])  # 重新参数化成正态分布
+        
+        # v size: (b, 48, t, h, w)
         v = v.sum(2)
 
         self.gmm_v = v
 
+        # maybe useless
         out_param = self.parameters
         b, c, t, h, w = out_param.size()
         out_param = out_param.reshape(b, self.hf_dim, self.K, 3, t, h, w)
@@ -468,6 +495,7 @@ class STPNet(nn.Module):
         self.gmm = D.MixtureSameFamily(mix, comp)
 
     def reparametrize(self, mu, logvar):
+        # size: (b, 48, 5, t, h, w)
         std = torch.exp(logvar)
         eps = torch.cuda.FloatTensor(std.size()).fill_(0.0)
         eps.normal_()
@@ -475,6 +503,7 @@ class STPNet(nn.Module):
         return x
 
     def neg_llh(self, hf):
+        # this function may be useless
         b, c, t, h, w = hf.size()
         if self.fh_loss in ["gmm", 'gmm_thin']:
             hf = hf.reshape(-1)
@@ -506,7 +535,7 @@ class SelfCInvNet(nn.Module):
         # after concat, the channel is 17 times of the input channel
         # include 3 low frequency channels, 48 high frequency channels.
         current_channel *= 17
-        for i in range(down_num): # down_num usually is 2
+        for i in range(down_num):  # down_num usually is 2
             for j in range(block_num[i]):
                 b = InvBlockExp(subnet_constructor, current_channel,
                                 channel_out)
@@ -537,6 +566,7 @@ class SelfCInvNet(nn.Module):
             # self.stp_net(lf)
             # loss_c = self.stp_net.neg_llh(hf)
             loss_c = out.mean() * 0
+            # out size: (bt, c+ck^2, h/k, w/k)
             return out, loss_c
 
         else:  # backward
@@ -549,11 +579,15 @@ class SelfCInvNet(nn.Module):
 
             bt, c, h, w = lr_input.size()
             b = bt // t
+            # lr_input size: (b, 3, t, h, w)
             lr_input = lr_input.reshape(b, t, c, h, w).transpose(1, 2)
 
             self.stp_net(lr_input)
+            # recon_hf size: (b, 48, t, h, w)
             recon_hf = self.stp_net.sample()
+            # out size: (b, 51, t, h, w)
             out = torch.cat((lr_input, recon_hf), dim=1)
+            # out size: (bt, 51, h, w)
             out = out.transpose(1, 2).reshape(b * t, out.size(1), h, w)
             for op in reversed(self.operations):
                 out = op.forward(out, rev)
