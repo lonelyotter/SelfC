@@ -153,29 +153,9 @@ def read_img1(env, path, size=None):
 
 
 def read_img(env, path, size=None):
-    # '''read image by cv2 or from lmdb
-    # return: Numpy float32, HWC, BGR, [0,1]'''
-    # if env is None:  # img
-    #     #img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
-    #     # img = cv2.imread(path, cv2.IMREAD_COLOR)
-    #     img = imageio.imread(path)
-    # else:
-    #     img = _read_img_lmdb(env, path, size)
-    # img = img.astype(np.float32) / 255.
-    # if img.ndim == 2:
-    #     img = np.expand_dims(img, axis=2)
-    # # some images have 4 channels
-    # if img.shape[2] > 3:
-    #     img = img[:, :, :3]
-    # return img
     ref_image = imageio.imread(path).transpose(2, 0, 1).astype(
-        np.float32) / 255.0
-    # fuck = 64
-    fuck = 1
-    h = (ref_image.shape[1] // fuck) * fuck
-    w = (ref_image.shape[2] // fuck) * fuck
-    ref_image = np.array(ref_image[:, :h, :w])
-    # print("ref_image",ref_image.shape)
+        np.float32)
+    ref_image = np.array(ref_image[:, :, :])
     return ref_image
 
 

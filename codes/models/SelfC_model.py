@@ -215,92 +215,63 @@ class SelfCModel(BaseModel):
         '''
         test the model
         '''
-        self.input = self.real_H  # size: bt, c, h, w
         self.netG.eval()
+        self.input = self.real_H  # size: bt, c, h, w
 
         with torch.no_grad():
             bt, c, h, w = self.real_H.shape
             t = 7
             b = bt // t
             self.real_H = self.real_H.reshape(b, t, c, h, w)
-            self.gop = 7
-            n_gop = t // self.gop  # 1
-            forw_L = []
-            fake_H = []
+            
+            # forward
+            self.input = self.real_H.reshape(bt, c, h, w)
+            forward_output, _ = self.netG(self.input)
+            self.forw_H = forward_output[:, 3:, :, :]
+            self.forw_L = forward_output[:, :3, :, :]
+            self.forw_L = self.Quantization(self.forw_L)
 
-            # TODO: maybe need to rewrite this part
-
-            for i in range(n_gop + 1):
-                if i == n_gop:
-                    # calculate indices to pad last frame
-                    indices = [i * self.gop + j for j in range(t % self.gop)]
-                    for _ in range(self.gop - t % self.gop):
-                        indices.append(t - 1)
-                    self.input = self.real_H[:, indices]
-                else:
-                    self.input = self.real_H[:,
-                                             i * self.gop:(i + 1) * self.gop]
-
-                _b, _t, _c, _h, _w = self.input.shape
-                self.forw_L, _ = self.netG(
-                    x=self.input.reshape(_b * _t, _c, _h, _w))
-
-                # high frequent component, discarded
-                self.forw_H = self.forw_L[:, 3:, :, :]
-                # low frequent component, also the generated low resolution video
-                self.forw_L = self.forw_L[:, :3, :, :]
-
-                # quantify the low resolution video to 256 levels in [0, 1]
-                # forw_L size: (bt, 3, h/k, w/k)
-                self.forw_L = self.Quantization(self.forw_L)
-
-                # backward
-                # y size: (bt, 3, h/k, w/k)
-                y = self.forw_L
-                x_samples, self.sample_H = self.netG(x=y, rev=True)
-                self.fake_H = x_samples[:, :3, :, :]
-                self.forw_L = self.forw_L.reshape(b, _t, c, h // 4, w // 4)
-                self.fake_H = self.fake_H.reshape(b, _t, c, h, w)
-
-                if i == n_gop:
-                    for j in range(t % self.gop):
-                        forw_L.append(self.forw_L[:, j])
-                        fake_H.append(self.fake_H[:, j])
-                else:
-                    for j in range(self.gop):
-                        forw_L.append(self.forw_L[:, j])
-                        fake_H.append(self.fake_H[:, j])
-
-        self.fake_H = torch.stack(fake_H, dim=1)
-        self.forw_L = torch.stack(forw_L, dim=1)
-        b, t, c, h, w = self.fake_H.size()
-        self.fake_H = self.fake_H.reshape(b * t, c, h, w)
-        b, t, c, h, w = self.forw_L.size()
-        self.forw_L = self.forw_L.reshape(b * t, c, h, w)
+            # backward
+            y = self.forw_L
+            x_samples, _ = self.netG(x=y, rev=True)
+            self.fake_H = x_samples[:, :3, :, :]
 
         self.netG.train()
 
-    def downscale(self, HR_img):
+    def test_downscale(self):
+        '''
+        downsampling the input video and quantization.
+
+        '''
         self.netG.eval()
+        self.input = self.real_H
+
         with torch.no_grad():
-            LR_img = self.netG(x=HR_img)[:, :3, :, :]
-            LR_img = self.Quantization(self.forw_L)
+            bt, c, h, w = self.real_H.shape
+            t = 7
+            b = bt // t
+            self.real_H = self.real_H.reshape(b, t, c, h, w)
+            
+            # forward
+            self.input = self.real_H.reshape(bt, c, h, w)
+            forward_output, _ = self.netG(self.input)
+            self.forw_H = forward_output[:, 3:, :, :]
+            self.forw_L = forward_output[:, :3, :, :]
+            self.forw_L = self.Quantization(self.forw_L)
+
         self.netG.train()
 
-        return LR_img
+        return self.forw_L
 
-    def upscale(self, LR_img, scale, gaussian_scale=1):
-        Lshape = LR_img.shape
-        zshape = [Lshape[0], Lshape[1] * (scale**2 - 1), Lshape[2], Lshape[3]]
-        y_ = torch.cat((LR_img, gaussian_scale * self.gaussian_batch(zshape)),
-                       dim=1)
-
+    def test_upscale(self, LR_video):
         self.netG.eval()
-        with torch.no_grad():
-            HR_img = self.netG(x=y_, rev=True)[:, :3, :, :]
-        self.netG.train()
 
-        return HR_img
+        with torch.no_grad():
+            HR_video, _ = self.netG(x=LR_video, rev=True)
+            HR_video = HR_video[:, :3, :, :]
+            
+        self.netG.train()
+        return HR_video
 
     def get_current_log(self):
         return self.log_dict

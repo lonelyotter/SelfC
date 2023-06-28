@@ -45,7 +45,7 @@ def get_timestamp():
 
 def mkdir(path):
     '''
-    make a directory
+    make a directory. If exist, do nothing.
     '''
     print("path:",path)
 
@@ -159,6 +159,8 @@ def tensor2img(tensor, out_type=np.uint8, min_max=(0, 1),n_per_row = -1):
         img_np = (img_np * 255.0).round()
         # Important. Unlike matlab, numpy.unit8() WILL NOT round by default.
     return img_np.astype(out_type)
+
+
 def img2tensor(img):
     img = torch.from_numpy(img).cuda(0)
 
